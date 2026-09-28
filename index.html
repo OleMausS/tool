@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Notenbuch">
+<meta name="theme-color" content="#1F4F42">
+<meta name="description" content="Notenbuch mit Codes statt Namen. Läuft komplett lokal im Browser.">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Notenbuch</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EEF1EE; --surface:#FFFFFF; --surface-2:#F6F8F6; --ink:#17211D; --muted:#5A6862; --line:#D5DCD7;
+  --bar:#1F4F42; --bar-ink:#F2F7F4; --bar-muted:#A9C4B9;
+  --accent:#23664F; --accent-ink:#FFFFFF; --accent-soft:#DDEDE5;
+  --amber:#8F5C0E; --amber-soft:#F5E8CF; --danger:#A33A2B; --danger-soft:#F6E0DB; --grey-soft:#E6EAE7;
+  --s-tint:#EAF0F8; --m-tint:#F1ECF7; --g-tint:#E3EEE8;
+  --b0:#2E6B3E; --b0-ink:#FFFFFF; --b1:#D7EBD9; --b1-ink:#1E5A2B; --b2:#FFFFFF; --b2-ink:#17211D;
+  --b3:#F8DEDA; --b3-ink:#8E2F22; --b4:#EDB3AA; --b4-ink:#6E1F14; --b5:#B23A2A; --b5-ink:#FFFFFF;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    color-scheme:dark;
+    --bg:#101614; --surface:#18201D; --surface-2:#1D2622; --ink:#E2E9E5; --muted:#97A59E; --line:#2C3632;
+    --bar:#15322A; --bar-ink:#E6F0EB; --bar-muted:#8FB0A3;
+    --accent:#5FBE9B; --accent-ink:#0C1A14; --accent-soft:#1C392F;
+    --amber:#E1AF5E; --amber-soft:#3A2F1B; --danger:#F08A7A; --danger-soft:#3C231F; --grey-soft:#252E2A;
+    --s-tint:#1A2230; --m-tint:#231D2C; --g-tint:#18302A;
+    --b0:#2F7A45; --b0-ink:#FFFFFF; --b1:#1F3A27; --b1-ink:#9FD8AE; --b2:#18201D; --b2-ink:#E2E9E5;
+    --b3:#3A2320; --b3-ink:#F2A89B; --b4:#5A2A22; --b4-ink:#FFC7BD; --b5:#A8382A; --b5-ink:#FFFFFF;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45;touch-action:manipulation;padding-bottom:env(safe-area-inset-bottom,0px)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+input,select,textarea{font-size:16px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .small{font-size:.875rem}
+
+header.bar{background:var(--bar);color:var(--bar-ink);padding:calc(env(safe-area-inset-top,0px) + 10px) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:18px;position:sticky;top:0;z-index:20}
+.logo{font-weight:800;font-size:1.15rem;letter-spacing:-.01em;border:0;background:none;color:inherit;padding:0}
+.logo span{color:var(--bar-muted);font-weight:600}
+header.bar nav{display:flex;gap:4px;flex:1}
+header.bar nav button{border:0;background:none;color:var(--bar-muted);font-weight:600;padding:8px 10px;border-radius:6px}
+header.bar nav button.on{color:var(--bar-ink);background:rgba(255,255,255,.1)}
+.wrap{max-width:1400px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px));padding-block:16px 60px;display:flex;flex-direction:column;gap:14px}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;min-height:42px;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.btn.danger.armed{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn.small{min-height:34px;padding:5px 10px;font-size:.88rem}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.spread{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-start;justify-content:space-between}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:8px 14px;font-weight:600;color:var(--muted);min-height:40px}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--bar);color:var(--bar-ink)}
+.seg button.on.late{background:var(--amber);color:#fff}
+.seg button.on.miss{background:var(--danger);color:#fff}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;padding:10px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.banner{border:1px dashed var(--amber);background:var(--surface);border-radius:10px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;font-size:.92rem}
+.banner.info{border-color:var(--line)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amber);vertical-align:middle}
+
+/* Kurse */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:130px}
+.card:hover{border-color:var(--accent)}
+.card h3{font-size:1.15rem}
+.card .foot{margin-top:auto;display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.card.add{border-style:dashed;align-items:center;justify-content:center;font-weight:600;color:var(--accent)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:.8rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--grey-soft);width:max-content}
+
+/* Tabelle */
+.tablewrap{overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 250px);-webkit-overflow-scrolling:touch}
+table.grid{border-collapse:separate;border-spacing:0;min-width:100%}
+table.grid th,table.grid td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center;white-space:nowrap}
+table.grid thead th{position:sticky;top:0;z-index:3;background:var(--surface-2);font-size:.78rem;font-weight:700;padding:8px 10px;vertical-align:bottom}
+table.grid thead th .d{display:block;font-weight:500;color:var(--muted);font-size:.72rem}
+table.grid thead th.s{background:var(--s-tint)} table.grid thead th.m{background:var(--m-tint)} table.grid thead th.g{background:var(--g-tint)}
+table.grid thead th button{border:0;background:none;padding:0;font-weight:700;font-size:.78rem;color:var(--ink);max-width:130px;overflow:hidden;text-overflow:ellipsis;display:block;margin:0 auto}
+table.grid th.code,table.grid td.code{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;min-width:92px}
+table.grid thead th.code{z-index:4}
+td.code button{border:0;background:none;padding:12px 12px;font-weight:700;width:100%;text-align:left;display:flex;align-items:center;gap:6px}
+td.cell button{border:0;background:none;width:100%;min-width:64px;min-height:48px;padding:6px;font-family:var(--mono);font-weight:600;font-size:1rem}
+td.cell button:hover{outline:2px solid var(--accent);outline-offset:-2px}
+td.avg{font-family:var(--mono);padding:6px 10px;min-width:68px;background:var(--surface-2)}
+td.tot{font-family:var(--mono);padding:6px 12px;min-width:80px;background:var(--g-tint);border-left:2px solid var(--bar)}
+td.tot b{font-size:1.1rem;display:block} td.tot span{font-size:.75rem;opacity:.75}
+th.tot{border-left:2px solid var(--bar)}
+.b0{background:var(--b0)!important;color:var(--b0-ink)} .b1{background:var(--b1)!important;color:var(--b1-ink)} .b2{color:var(--b2-ink)}
+.b3{background:var(--b3)!important;color:var(--b3-ink)} .b4{background:var(--b4)!important;color:var(--b4-ink)} .b5{background:var(--b5)!important;color:var(--b5-ink)}
+.tb0,.tb1{color:var(--b1-ink)} .tb3,.tb4,.tb5{color:var(--b3-ink)}
+.suffix{font-size:.7rem;opacity:.85;margin-left:1px}
+.typ{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.04em;padding:0 4px;border-radius:3px;background:var(--line);color:var(--ink);margin-left:3px;vertical-align:1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.empty{padding:40px 20px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(10,20,16,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 20px) 12px 20px;overflow:auto}
+.modal{background:var(--surface);border-radius:14px;width:min(560px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;max-height:none}
+.modal.wide{width:min(980px,100%)}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.mhead h2{font-size:1.1rem}
+.mbody{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.mfoot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line)}
+.x{border:0;background:none;font-size:1.4rem;line-height:1;padding:4px 8px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:5px;font-size:.9rem;font-weight:600}
+.field .hint{font-weight:400;font-size:.8rem;color:var(--muted)}
+input[type=text],input[type=number],input[type=date],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;font-weight:400}
+textarea{resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat span{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.stat b{font-family:var(--mono);font-size:1.05rem}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keypad button{border:1px solid var(--line);border-radius:8px;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:1.15rem;line-height:1.1;background:var(--b2)}
+.keypad button small{font-family:var(--sans);font-size:.72rem;font-weight:600;opacity:.8}
+.keypad button.sel{outline:3px solid var(--ink);outline-offset:1px}
+.keypad .zero{grid-column:2}
+.msg{font-size:.88rem;padding:8px 12px;border-radius:8px}
+.msg.err{background:var(--danger-soft);color:var(--danger)} .msg.ok{background:var(--accent-soft);color:var(--accent)}
+
+/* Raster */
+.crit{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.crithead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.crithead .sub{display:block;font-size:.8rem;color:var(--muted);font-weight:400}
+.crithead .w{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+.nb{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:3px 10px;font-size:.78rem;font-weight:600;color:var(--muted)}
+.nb.on{background:var(--grey-soft);color:var(--ink);border-color:var(--muted)}
+.levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lvl{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--surface-2);text-align:left}
+.lvl .st{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.lvl .tx{font-size:.86rem;line-height:1.3}
+.lvl.on{background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.lvl.on .st{color:var(--accent);font-weight:700}
+.crit.off .levels{opacity:.35}
+.tend{display:flex;gap:6px;align-items:center;font-size:.85rem;color:var(--muted);flex-wrap:wrap}
+.tend button{border:1px solid var(--line);background:var(--surface);border-radius:6px;min-width:46px;min-height:36px;font-family:var(--mono);font-weight:700}
+.tend button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.rgrid{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px;align-items:start}
+.rside{position:sticky;top:12px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:10px;padding:14px}
+.bigpts{display:flex;align-items:baseline;gap:8px}
+.bigpts b{font-family:var(--mono);font-size:2.8rem;line-height:1}
+.bigpts .n{margin-left:auto;font-family:var(--mono);padding:3px 8px;border-radius:5px;background:var(--grey-soft)}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:.9rem}
+.cap{font-size:.82rem;color:var(--amber);background:var(--amber-soft);padding:6px 10px;border-radius:6px}
+.afbbox{padding:12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.rcrit{display:grid;grid-template-columns:minmax(0,1fr) 90px auto auto;gap:8px 10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);align-items:end}
+.rcrit .full{grid-column:1 / -1}
+.rcrit label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
+.rcrit label.chk{flex-direction:row;align-items:center;gap:6px;color:var(--ink);padding-bottom:10px}
+.chkline{display:flex;gap:8px;align-items:flex-start;font-size:.92rem}
+.chkline input{margin-top:4px}
+.glist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.glist div{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.92rem}
+.glist div:last-child{border-bottom:0}
+.src{font-size:.78rem;color:var(--muted)}
+
+@media (max-width:820px){
+  .rgrid{grid-template-columns:1fr} .rside{position:static;order:-1}
+  .levels{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .two,.stats{grid-template-columns:1fr} .levels{grid-template-columns:1fr}
+  .rcrit{grid-template-columns:1fr 80px}
+  header.bar{gap:8px} header.bar nav button{padding:8px 6px}
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <button class="logo" data-a="home" type="button">Notenbuch<span>.</span></button>
+  <nav>
+    <button type="button" data-a="home" id="navKurse">Kurse</button>
+    <button type="button" data-a="settings" id="navSet">Einstellungen</button>
+  </nav>
+</header>
+<main class="wrap" id="app"></main>
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   Grundlagen
+   ========================================================= */
+const LS = "notenbuch-v1", UIKEY = "notenbuch-ui";
+const NOTEN = ["6","5−","5","5+","4−","4","4+","3−","3","3+","2−","2","2+","1−","1","1+"];
+const BAND = ["Note 1 · 13–15 P","Note 2 · 10–12 P","Note 3 · 7–9 P","Note 4 · 4–6 P","Note 5 · 1–3 P","Note 6 · 0 P"];
+const bandOf = p => p === 0 ? 5 : Math.floor((15 - p) / 3);
+const bandPts = i => i === 5 ? [0] : [13 - 3*i, 14 - 3*i, 15 - 3*i];
+const bandMid = i => i === 5 ? 0 : 14 - 3*i;
+const rnd = x => Math.floor(x + 0.5);
+const AFB = [
+  {v:1, t:"Überwiegend AFB I", d:"Wiedergabe von Gelerntem, reproduktiv", cap:4},
+  {v:2, t:"Über AFB I hinaus, Schwerpunkt AFB II", d:"Erklären, Ordnen, Anwenden auf neue Sachverhalte", cap:9},
+  {v:3, t:"Deutlich über AFB II, wesentlicher Anteil AFB III", d:"Eigenständige Begründungen, Deutungen, Wertungen", cap:15}
+];
+const HA_STAT = {ok:"pünktlich", spaet:"verspätet", fehlt:"nicht eingereicht"};
+const TYP = {note:"Einzelnote", ha:"Hausaufgabe", raster:"Raster"};
+const DEF_OFFSETS = [2,1,0,-1,-2,-3];
+const isZ = c => c.kind === "zuschlag";
+const sgn = n => (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n);
+
+const TEMPLATE = {
+  afbRule: true,
+  criteria: [
+    {id:"ver", name:"Verständnis", sub:"Zusammenhänge erkennen und einordnen", weight:15, active:true, levels:[
+      "Müheloses Erkennen von Zusammenhängen; neue Probleme werden selbstständig in größere Zusammenhänge eingeordnet",
+      "Zusammenhänge und innere Strukturen werden im Allgemeinen erkannt; Sachverhalte können eingeordnet werden",
+      "Gelegentlich werden Zusammenhänge nicht erkannt oder ihre Analyse gelingt nicht; Sachverhalte können in gerade behandelte Themen eingeordnet werden",
+      "Schwierigkeiten bei der Analyse; Einordnung von Sachverhalten nach bekannten Kriterien gelingt nur mit Hilfe",
+      "Verständnis nur vordergründig und naiv; innere Strukturen werden nicht erkannt",
+      "Auch Vordergründiges wird nicht erkannt; nur sehr lückenhafte Grundkenntnisse"]},
+    {id:"bei", name:"Eigene Beiträge und Fachsprache", sub:"Qualität der Beiträge, Gebrauch der Fachsprache", weight:20, active:true, levels:[
+      "Fast immer fähig zur Abstraktion; klar, durchdacht, stets weiterführend und bezugnehmend; Fachsprache sicher",
+      "Meistens fähig zur Abstraktion; meist durchdacht, sprachlich korrekt und weiterführend; Fachsprache überwiegend sicher",
+      "Bei bestimmten Themen fähig zur Abstraktion; nicht immer durchdacht, zuweilen weiterführend, meist zum Thema; Fachbegriffe teilweise genutzt",
+      "Selten fähig zur Abstraktion; wenig durchdacht und sprachlich problematisch, selten weiterführend; Fachbegriffe selten und oft ungenau",
+      "Unfähig zur Abstraktion; Beiträge wirr und nicht nachvollziehbar, ohne Sachkenntnis; kaum Fachbegriffe",
+      "Kein Versuch zur Abstraktion; inhaltlich und sprachlich unverständlich, lähmt Diskussionen"]},
+    {id:"inf", name:"Informiertheit", sub:"Kenntnisse, eigenständige Informationsbeschaffung", weight:10, active:true, levels:[
+      "Innerhalb und außerhalb der Unterrichtsthemen vielseitig und systematisch informiert; in Spezialgebieten über das geforderte Maß hinaus",
+      "Fähig zur hinreichenden selbstständigen Informationsbeschaffung für alle Probleme, die im Unterricht auftreten",
+      "Zu Unterrichtsthemen angebotene Information wird hin und wieder selbstständig erweitert",
+      "Weitergehende Informationsmöglichkeiten inner- und außerhalb des Unterrichts werden fast nie genutzt",
+      "Auch nach Aufforderung nur beschränkte Informationsbeschaffung",
+      "Verzichtet gänzlich auf Informationen"]},
+    {id:"tei", name:"Teilnahme (Quantität)", sub:"Nur Häufigkeit und Kontinuität, nicht Richtigkeit", kind:"zuschlag", offsets:[2,1,0,-1,-2,-3], weight:0, active:true, levels:[
+      "Beteiligt sich in jeder Stunde und in allen Phasen mehrfach, auch unaufgefordert",
+      "Beteiligt sich regelmäßig in allen Unterrichtsphasen",
+      "Beteiligt sich regelmäßig, vor allem bei vertrauten Inhalten; meist aus eigenem Antrieb",
+      "Beteiligt sich selten, meist nur auf Aufforderung",
+      "Beteiligt sich sehr selten, nur nach Aufforderung",
+      "Beteiligt sich fast nie, auch auf Aufforderung kaum"]},
+    {id:"mat", name:"Umgang mit Material und Methoden", sub:"Quellen und Darstellungen erschließen (Erschließungskompetenz)", weight:20, active:true, levels:[
+      "Erschließt Quellen und Darstellungen selbstständig und gattungsgerecht; berücksichtigt Standort, Perspektive und Aussageabsicht; wendet Methoden reflektiert an",
+      "Erschließt Material sicher und belegt Aussagen am Material; fragt nach Perspektive und Entstehungskontext",
+      "Gibt Materialinhalte weitgehend korrekt wieder; analysiert mit Unterstützung; Belege vereinzelt",
+      "Gibt Material nur teilweise zutreffend wieder; wendet Methoden nur mit Anleitung an",
+      "Erschließt Material kaum oder missversteht es; keine Belege",
+      "Arbeitet nicht mit dem Material"]},
+    {id:"urt", name:"Urteilen und Narrationen", sub:"Sach- und Werturteile, Deutungen prüfen, eigene Narrationen", weight:20, active:true, levels:[
+      "Formuliert eigenständige, abgewogene Sach- und Werturteile; prüft bestehende Deutungen auf Plausibilität und Standort; bezieht Gegenpositionen und Gegenwartsbezug ein",
+      "Begründet Sach- und Werturteile schlüssig; erkennt unterschiedliche Deutungen und Perspektiven",
+      "Formuliert einfache begründete Urteile; Sach- und Werturteil werden teilweise vermischt",
+      "Äußert Meinungen mit schwacher Begründung; übernimmt Deutungen unkritisch",
+      "Urteile ohne Begründung oder nur auf Aufforderung",
+      "Kein Urteil erkennbar"]},
+    {id:"gp", name:"Gruppen- und Projektarbeit (GP)", sub:"Mitarbeit, Einsatz, Ideenvielfalt im Team", weight:15, active:false, levels:[
+      "Zielgerichtete Mitarbeit; themenbezogene, überdurchschnittliche Erfüllung aller Kompetenzkriterien",
+      "Gut strukturiertes Einbringen von Materialien; kompetente Hilfe bei komplexen Themen",
+      "Weitgehend teamfähig; notwendige Arbeiten werden gemacht; Beitrag einfacher themenbezogener Inhalte",
+      "Nur gelegentliche Eigeninitiative; unreflektiertes Einbringen populärwissenschaftlicher Ideen",
+      "Mitarbeit nur bei ständiger Aufforderung; nur Übernahme einfachster Tätigkeiten",
+      "Kein Engagement oder Störung im Team; keinerlei Materialbeschaffung"]},
+    {id:"rp", name:"Referat und Präsentation (RP)", sub:"Darstellung und Präsentation von Ergebnissen", weight:15, active:false, levels:[
+      "Eigenständige Arbeit und kritische Reflexion; sehr anschaulich; kompetenter Medieneinsatz",
+      "Problemorientiert, einige weiterführende Ansätze; flüssiger Vortrag; gute Mediennutzung",
+      "Schlüssige Gliederung, inhaltlich vollständig; teilweise freier Vortrag; Medien bedingt geeignet",
+      "Mängel in Gliederung und Literaturarbeit; Vortrag abgelesen; kaum Medieneinsatz",
+      "Flüchtige Quellenarbeit, unlogische Struktur; unvorbereiteter Vortrag, fast ohne Medien",
+      "Verfehltes Thema oder Plagiat; fehlerhafter Inhalt, undeutliche Sprache; keinerlei Medien"]}
+  ]
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = p => (p||"x") + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const fmt = (n, d=1) => n == null ? "–" : n.toFixed(d).replace(".", ",");
+const today = () => new Date().toISOString().slice(0,10);
+const dShort = d => d ? d.slice(8,10) + "." + d.slice(5,7) + "." : "";
+const dLong = d => d ? d.slice(8,10) + "." + d.slice(5,7) + "." + d.slice(0,4) : "ohne Datum";
+const band = p => p == null ? "" : "b" + bandOf(rnd(p));
+function lsGet(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+
+/* =========================================================
+   Daten
+   ========================================================= */
+let db = lsGet(LS) || {version:1, courses:{}, template: clone(TEMPLATE), lastBackup:null, created:Date.now()};
+if (!db.template) db.template = clone(TEMPLATE);
+const ui = Object.assign({view:"home", cid:null, filter:"alle"}, lsGet(UIKEY) || {});
+let saveOk = true;
+function save(){ saveOk = lsSet(LS, db); }
+function saveUi(){ lsSet(UIKEY, {view:ui.view, cid:ui.cid, filter:ui.filter}); }
+function course(){ return db.courses[ui.cid] || null; }
+function sortCodes(arr){ return arr.slice().sort((a,b) => { const x = Number(a), y = Number(b); return (isNaN(x)||isNaN(y)) ? String(a).localeCompare(String(b),"de") : x - y; }); }
+function leistungen(c, hj, filter){
+  return Object.values(c.leistungen||{}).filter(L => L.hj === hj && (!filter || filter === "alle" || (filter === "s" ? L.art === "s" : L.art === "m")))
+    .sort((a,b) => (a.art === b.art ? 0 : a.art === "s" ? -1 : 1) || String(a.date||"9999").localeCompare(String(b.date||"9999")) || a.created - b.created);
+}
+
+/* =========================================================
+   Berechnung
+   ========================================================= */
+function computeRaster(R, r){
+  r = r || {};
+  const crits = R.criteria.filter(c => c.active);
+  let wSum = 0, sum = 0, answered = 0, valued = 0, zus = 0;
+  crits.forEach(c => {
+    const v = (r.a||{})[c.id];
+    if (v === undefined || v === null) return;
+    answered++;
+    if (v < 0) return;
+    if (isZ(c)){ zus += Number((c.offsets||DEF_OFFSETS)[bandOf(v)])||0; return; }
+    valued++; wSum += Number(c.weight)||0; sum += (Number(c.weight)||0) * v;
+  });
+  const afbOk = !R.afbRule || !!r.afb;
+  if (!valued) return {status: answered ? "teil" : "offen", answered, total:crits.length, afbOk};
+  const avg = wSum ? sum / wSum : 0;
+  const raw = Math.max(0, Math.min(15, rnd(avg + zus)));
+  const korr = Number(r.korr)||0;
+  let fin = Math.max(0, Math.min(15, raw + korr)), cap = 15, capped = false;
+  if (R.afbRule && r.afb){ cap = AFB.find(x => x.v === r.afb).cap; if (fin > cap){ fin = cap; capped = true; } }
+  return {status: answered === crits.length && afbOk ? "done" : "teil", answered, total:crits.length, avg, zus, raw, korr, fin, cap, capped, afbOk};
+}
+/* Wert, der in die Durchschnitte eingeht (null = zählt nicht) */
+function eff(L, g){
+  if (!g || g.ent) return null;
+  if (L.typ === "raster"){ if (!g.r) return null; const x = computeRaster(L.raster, g.r); return x.status === "done" ? x.fin : null; }
+  if (L.typ === "ha"){
+    if (g.st === "fehlt") return Number(L.haMissing)||0;
+    if (g.p == null) return null;
+    if (g.st === "spaet") return Math.max(0, g.p - (Number(L.haLate)||0));
+    return g.p;
+  }
+  return g.p == null ? null : g.p;
+}
+function cellInfo(L, g){
+  if (!g) return {t:"", cls:""};
+  if (g.ent) return {t:"e", cls:"", title:"entschuldigt, zählt nicht"};
+  const v = eff(L, g);
+  if (L.typ === "raster" && v == null && g.r){ const x = computeRaster(L.raster, g.r); if (x.status !== "offen") return {t:"…", cls:"", title:"Raster begonnen"}; return {t:"", cls:""}; }
+  if (v == null) return {t:"", cls:""};
+  let suf = "";
+  if (L.typ === "ha" && g.st === "spaet") suf = "v"; if (L.typ === "ha" && g.st === "fehlt") suf = "f";
+  return {t: String(v).padStart(2,"0"), suf, cls: band(v)};
+}
+function avgs(c, code, hj){
+  const s = [0,0], m = [0,0];
+  leistungen(c, hj).forEach(L => {
+    const v = eff(L, (L.grades||{})[code]); if (v == null) return;
+    const w = Number(L.weight) > 0 ? Number(L.weight) : 1;
+    const t = L.art === "s" ? s : m; t[0] += v*w; t[1] += w;
+  });
+  const S = s[1] ? s[0]/s[1] : null, M = m[1] ? m[0]/m[1] : null;
+  const ws = (Number(c.wS)||0) / 100;
+  const G = S != null && M != null ? ws*S + (1-ws)*M : (S != null ? S : M);
+  return {S, M, G};
+}
+function lastOral(c, code, hj){
+  let last = null;
+  leistungen(c, hj).forEach(L => {
+    if (L.art !== "m") return;
+    const g = (L.grades||{})[code]; if (!g || eff(L, g) == null) return;
+    const d = L.date || new Date(L.created).toISOString().slice(0,10);
+    if (!last || d > last) last = d;
+  });
+  return last;
+}
+function stale(c, code, hj){
+  const l = lastOral(c, code, hj); if (!l) return true;
+  return (Date.now() - new Date(l + "T12:00:00").getTime()) / 864e5 > 21;
+}
+function courseAvg(c, hj){
+  const v = c.codes.map(k => avgs(c, k, hj).G).filter(x => x != null);
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
+}
+
+/* =========================================================
+   Rendern: Seiten
+   ========================================================= */
+function render(){
+  $("#navKurse").classList.toggle("on", ui.view !== "settings");
+  $("#navSet").classList.toggle("on", ui.view === "settings");
+  const app = $("#app");
+  if (ui.view === "kurs" && course()) return renderKurs(app);
+  if (ui.view === "settings") return renderSettings(app);
+  ui.view = "home"; return renderHome(app);
+}
+function backupBanner(){
+  if (!saveOk) return `<div class="banner"><span><span class="dot" style="background:var(--danger)"></span> Dieser Browser lässt kein dauerhaftes Speichern zu (privater Modus?). Vor dem Schließen ein Backup sichern.</span><button class="btn small" data-a="backup">Backup jetzt</button></div>`;
+  const hasData = Object.keys(db.courses).length;
+  if (!hasData) return "";
+  const days = db.lastBackup ? Math.floor((Date.now() - db.lastBackup)/864e5) : null;
+  if (days != null && days < 14) return "";
+  return `<div class="banner"><span>${days == null ? "Noch kein Backup erstellt." : `Letztes Backup vor ${days} Tagen.`} Sichere regelmäßig, die Daten liegen nur auf diesem Gerät.</span><button class="btn small" data-a="backup">Backup jetzt</button></div>`;
+}
+function renderHome(app){
+  const cs = Object.values(db.courses).sort((a,b)=>a.created-b.created);
+  const n = cs.reduce((s,c)=>s+c.codes.length,0);
+  app.innerHTML = `${backupBanner()}
+  <div class="spread"><div><h1>Kurse</h1><div class="muted small">${cs.length} ${cs.length===1?"Kurs":"Kurse"} · ${n} Codes insgesamt</div></div>
+    <button class="btn primary" data-a="kursNew">+ Neuer Kurs</button></div>
+  <div class="cards">${cs.map(c => { const hj = c.hj || 1; const a = courseAvg(c, hj);
+    return `<button class="card" data-a="open" data-id="${c.id}"><h3>${esc(c.fach)}</h3><div class="muted">${esc(c.gruppe||"")}</div>
+      ${a != null ? `<span class="pill ${band(a)}">Ø ${fmt(a)} · ${NOTEN[rnd(a)]}</span>` : `<span class="pill">noch keine Noten</span>`}
+      <div class="foot"><span>${c.codes.length} Codes</span><span>${hj}. Halbjahr</span></div></button>`; }).join("")}
+    <button class="card add" data-a="kursNew">+ Neuer Kurs</button></div>`;
+}
+function renderKurs(app){
+  const c = course(); const hj = c.hj || 1; const f = ui.filter || "alle";
+  const Ls = leistungen(c, hj, f);
+  const codes = sortCodes(c.codes);
+  const hasM = leistungen(c, hj).some(L => L.art === "m");
+  const nStale = hasM ? codes.filter(k => stale(c, k, hj)).length : 0;
+  const head = Ls.map(L => `<th class="${L.art}"><button data-a="lEdit" data-id="${L.id}" title="${esc(L.name)} bearbeiten">${esc(L.name)}${L.typ!=="note"?`<span class="typ">${L.typ==="ha"?"HA":"R"}</span>`:""}</button><span class="d">${dShort(L.date)}${Number(L.weight)>1?" · ×"+L.weight:""}</span></th>`).join("");
+  const rows = codes.map(k => {
+    const a = avgs(c, k, hj);
+    const cells = Ls.map(L => { const ci = cellInfo(L, (L.grades||{})[k]); return `<td class="cell"><button class="${ci.cls}" data-a="entry" data-l="${L.id}" data-k="${esc(k)}" ${ci.title?`title="${ci.title}"`:""} aria-label="${esc(L.name)}, Code ${esc(k)}">${ci.t}${ci.suf?`<span class="suffix">${ci.suf}</span>`:""}</button></td>`; }).join("");
+    const sm = f === "alle" ? `<td class="avg ${a.S!=null?"t"+band(a.S):""}">${fmt(a.S)}</td><td class="avg ${a.M!=null?"t"+band(a.M):""}">${fmt(a.M)}</td>` : f === "s" ? `<td class="avg">${fmt(a.S)}</td>` : `<td class="avg">${fmt(a.M)}</td>`;
+    return `<tr><td class="code"><button data-a="code" data-k="${esc(k)}">Code ${esc(k)}${hasM && stale(c,k,hj)?' <span class="dot" title="Keine mündliche Note in den letzten 21 Tagen"></span>':""}</button></td>${cells}${sm}
+      <td class="tot ${a.G!=null?band(a.G):""}">${a.G!=null?`<b>${fmt(a.G)}</b><span>${NOTEN[rnd(a.G)]}</span>`:"–"}</td></tr>`;
+  }).join("");
+  const avgHead = f === "alle" ? `<th class="s">Ø schr.</th><th class="m">Ø mündl.</th>` : f === "s" ? `<th class="s">Ø schr.</th>` : `<th class="m">Ø mündl.</th>`;
+  const ws = Number(c.wS)||0;
+  app.innerHTML = `${backupBanner()}
+  <div class="spread">
+    <div><h1>${esc(c.fach)} <span class="muted" style="font-weight:600">${esc(c.gruppe||"")}</span></h1>
+      <div class="muted small">Punkte 0–15 · Gewichtung ${ws} % schriftlich · ${100-ws} % mündlich</div></div>
+    <div class="row"><button class="btn" data-a="export">Export</button><button class="btn" data-a="kursEdit">Kurs bearbeiten</button></div>
+  </div>
+  <div class="tabs"><button class="${hj===1?"on":""}" data-a="hj" data-v="1">1. Halbjahr</button><button class="${hj===2?"on":""}" data-a="hj" data-v="2">2. Halbjahr</button></div>
+  <div class="spread">
+    <div class="seg"><button class="${f==="alle"?"on":""}" data-a="filter" data-v="alle">Gesamt</button><button class="${f==="s"?"on":""}" data-a="filter" data-v="s">Schriftlich</button><button class="${f==="m"?"on":""}" data-a="filter" data-v="m">Mündlich</button></div>
+    <div class="row"><button class="btn" data-a="lNew" data-art="s">+ Schriftlich</button><button class="btn" data-a="lNew" data-art="m">+ Mündlich</button><button class="btn" data-a="lNew" data-art="m" data-typ="ha">+ HA</button><button class="btn" data-a="lNew" data-art="m" data-typ="raster">+ Raster</button><button class="btn primary" data-a="durchPick">Durchtippen</button></div>
+  </div>
+  ${nStale ? `<div class="banner info"><span><span class="dot"></span> ${nStale} ${nStale===1?"Code":"Codes"} ohne mündliche Note in den letzten 21 Tagen.</span></div>` : ""}
+  ${leistungen(c, hj).length ? `<div class="tablewrap"><table class="grid"><thead><tr><th class="code">Code</th>${head}${avgHead}<th class="g tot">Gesamt</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="legend"><span>Zelle antippen: Note eintragen</span><span>Spaltenkopf: Leistung bearbeiten</span><span>v = verspätet · f = nicht eingereicht · e = entschuldigt · … = Raster begonnen</span></div>`
+  : `<div class="panel empty"><h2>Noch keine Leistungen im ${hj}. Halbjahr</h2><p class="muted" style="margin:0;max-width:52ch">Lege eine schriftliche oder mündliche Leistung, eine Hausaufgabe oder eine Rasterbewertung an. Jede Leistung wird eine Spalte.</p>
+    <div class="row" style="justify-content:center"><button class="btn primary" data-a="lNew" data-art="m">+ Mündliche Note</button><button class="btn" data-a="lNew" data-art="m" data-typ="raster">+ Rasterbewertung</button></div></div>`}`;
+}
+function renderSettings(app){
+  const cs = Object.keys(db.courses).length;
+  app.innerHTML = `<h1>Einstellungen</h1>
+  <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+    <h2>Backup</h2>
+    <p class="small muted" style="margin:0">Alle Daten liegen nur auf diesem Gerät im Speicher des Browsers bzw. der Home-Bildschirm-App. Wird die App gelöscht oder der Website-Speicher geleert, sind sie weg. Das Backup ist eine JSON-Datei, auf dem iPad landet sie in der Dateien-App unter „Downloads“.</p>
+    <div class="small">Letztes Backup: <b>${db.lastBackup ? new Date(db.lastBackup).toLocaleString("de-DE",{dateStyle:"medium",timeStyle:"short"}) : "noch keins"}</b> · ${cs} ${cs===1?"Kurs":"Kurse"}</div>
+    <div class="row"><button class="btn primary" data-a="backup">Backup herunterladen</button><button class="btn" data-a="restorePick">Backup einspielen …</button><input type="file" id="restoreFile" accept=".json,application/json" hidden></div>
+    <div id="restoreMsg"></div>
+  </div>
+  <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+    <h2>Raster-Vorlage</h2>
+    <p class="small muted" style="margin:0">Neue Rasterbewertungen kopieren diese Vorlage. Änderungen hier wirken nicht auf bereits angelegte Raster-Spalten; die bearbeitest du über ihren Spaltenkopf.</p>
+    <div class="small">${db.template.criteria.filter(c=>c.active).map(c=>esc(c.name)).join(" · ")}${db.template.afbRule?" · AFB-Begrenzung an":""}</div>
+    <div class="row"><button class="btn" data-a="rasterEdit" data-t="template">Vorlage bearbeiten</button><button class="btn" data-a="templateReset" id="tplReset">Auf Standard zurücksetzen</button></div>
+  </div>
+  <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <h2>Speicher</h2>
+    <div class="small" id="persistInfo">Wird geprüft …</div>
+    <div class="row"><button class="btn" data-a="persist">Dauerhaften Speicher anfordern</button></div>
+  </div>
+  <p class="src">Rastergrundlage: Fachanforderungen Geschichte SH 2016 (Sek II, Kap. 5), Fachschaftsbeschluss Geschichte 09/2022, „Kriterien zur Beurteilung der Unterrichtsbeiträge“, Ernst Klett Verlag 2012, S. 21 (für den eigenen Unterrichtsgebrauch). Notenpunkte → Note: 15 = 1+ … 0 = 6. Gesamtnote = gewichteter Mittelwert aus Ø schriftlich und Ø mündlich, gerundet ab ,5.</p>`;
+  persistInfo();
+}
+async function persistInfo(){
+  const el = $("#persistInfo"); if (!el) return;
+  try{
+    const p = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null;
+    const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null;
+    const used = (JSON.stringify(db).length/1024).toFixed(0);
+    el.innerHTML = `Datenmenge: ${used} KB. ${p === true ? "Speicher ist als dauerhaft markiert." : p === false ? "Speicher ist nicht als dauerhaft markiert; der Browser darf ihn bei Platzmangel löschen." : "Status nicht abfragbar."}${est && est.quota ? ` Verfügbar: ca. ${Math.round(est.quota/1048576)} MB.` : ""}`;
+  }catch(e){ el.textContent = "Status nicht abfragbar."; }
+}
+
+/* =========================================================
+   Modals
+   ========================================================= */
+let M = null;   // aktueller Modal-Zustand
+function openModal(state){ M = state; renderModal(); }
+function closeModal(){ M = null; $("#modalRoot").innerHTML = ""; render(); }
+function renderModal(){
+  const root = $("#modalRoot");
+  if (!M){ root.innerHTML = ""; return; }
+  const fn = {kurs:mKurs, leistung:mLeistung, entry:mEntry, code:mCode, raster:mRasterEdit, durch:mDurch, export:mExport}[M.type];
+  const scroll = root.querySelector(".modal-bg") ? root.querySelector(".modal-bg").scrollTop : 0;
+  root.innerHTML = `<div class="modal-bg" data-a="bgclose"><div class="modal ${M.wide?"wide":""}" role="dialog" aria-modal="true">${fn()}</div></div>`;
+  if (M.keepScroll) root.querySelector(".modal-bg").scrollTop = scroll;
+  M.keepScroll = false;
+}
+function mHead(t){ return `<div class="mhead"><h2>${t}</h2><button class="x" data-a="close" aria-label="Schließen">×</button></div>`; }
+
+/* ---- Kurs anlegen / bearbeiten ---- */
+function mKurs(){
+  const d = M.d; const isNew = !M.id;
+  return `${mHead(isNew ? "Neuer Kurs" : "Kurs bearbeiten")}
+  <div class="mbody">
+    <div class="two"><label class="field">Fach<input type="text" id="k_fach" value="${esc(d.fach)}" placeholder="z. B. Geschichte"></label>
+      <label class="field">Lerngruppe<input type="text" id="k_gruppe" value="${esc(d.gruppe)}" placeholder="z. B. G2"></label></div>
+    <label class="field">Codes<textarea id="k_codes" rows="3">${esc(d.codes.join(", "))}</textarea>
+      <span class="hint">Durch Komma oder Leerzeichen getrennt. Die Zuordnung Code → Person bleibt auf Papier.</span></label>
+    <div class="row"><input type="number" id="k_n" min="1" max="60" value="${d.codes.length||20}" style="width:90px"><button class="btn small" data-a="kFill">Codes 1 bis n setzen</button></div>
+    <label class="field">Anteil schriftlich an der Gesamtnote (%)<input type="number" id="k_ws" min="0" max="100" value="${esc(d.wS)}"><span class="hint">Der Rest ist mündlich. Mit dem Fachschaftsbeschluss abgleichen.</span></label>
+    ${M.err ? `<div class="msg err">${esc(M.err)}</div>` : ""}
+  </div>
+  <div class="mfoot">${isNew ? "" : `<button class="btn danger ${M.armed?"armed":""}" data-a="kDel" style="margin-right:auto">${M.armed?"Wirklich löschen? Alle Noten weg":"Kurs löschen"}</button>`}
+    <button class="btn" data-a="close">Abbrechen</button><button class="btn primary" data-a="kSave">${isNew?"Anlegen":"Speichern"}</button></div>`;
+}
+function readKurs(){
+  const d = M.d;
+  d.fach = $("#k_fach").value; d.gruppe = $("#k_gruppe").value; d.wS = $("#k_ws").value;
+  d.codes = $("#k_codes").value.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
+}
+
+/* ---- Leistung anlegen / bearbeiten ---- */
+function mLeistung(){
+  const d = M.d; const isNew = !M.id; const c = course();
+  const hasGrades = !isNew && Object.keys(c.leistungen[M.id].grades||{}).length > 0;
+  return `${mHead(isNew ? "Neue Leistung" : "Leistung bearbeiten")}
+  <div class="mbody">
+    <label class="field">Bezeichnung<input type="text" id="l_name" value="${esc(d.name)}" placeholder="${d.typ==="ha"?"z. B. HA Denkmal-Steckbrief":d.typ==="raster"?"z. B. Unterrichtsbeiträge September":d.art==="s"?"z. B. Klausur 1":"z. B. Mitarbeit"}"></label>
+    <div class="two"><label class="field">Datum (optional)<input type="date" id="l_date" value="${esc(d.date||"")}"></label>
+      <label class="field">Halbjahr<select id="l_hj"><option value="1" ${d.hj===1?"selected":""}>1. Halbjahr</option><option value="2" ${d.hj===2?"selected":""}>2. Halbjahr</option></select></label></div>
+    <div class="field">Art<div class="seg"><button class="${d.art==="s"?"on":""}" data-a="lSet" data-f="art" data-v="s">Schriftlich</button><button class="${d.art==="m"?"on":""}" data-a="lSet" data-f="art" data-v="m">Mündlich</button></div></div>
+    <div class="field">Eingabe<div class="seg">${Object.entries(TYP).map(([k,l])=>`<button class="${d.typ===k?"on":""}" data-a="lSet" data-f="typ" data-v="${k}" ${hasGrades&&d.typ!==k?"disabled":""}>${l}</button>`).join("")}</div>
+      <span class="hint">${d.typ==="note"?"Punkte 0–15 direkt eintippen.":d.typ==="ha"?"Note 1–6 mit Punkten, dazu pünktlich, verspätet oder nicht eingereicht.":"Pro Code das Bewertungsraster ausfüllen; das Ergebnis wird die Note. Das Raster wird aus der Vorlage kopiert."}${hasGrades?" Die Eingabeart ist fest, weil schon Noten eingetragen sind.":""}</span></div>
+    <label class="field">Gewichtung: zählt n-fach<input type="number" id="l_w" min="0.5" step="0.5" value="${esc(d.weight)}"><span class="hint">Standard 1. Bei 2 wiegt diese Note so viel wie zwei einfache Noten desselben Bereichs.</span></label>
+    ${d.typ==="ha" ? `<div class="two"><label class="field">Verspätet: Abzug in Punkten<input type="number" id="l_late" min="0" max="15" value="${esc(d.haLate)}"><span class="hint">3 P = eine Notenstufe</span></label>
+      <label class="field">Nicht eingereicht zählt als<input type="number" id="l_miss" min="0" max="15" value="${esc(d.haMissing)}"><span class="hint">0 P = Note 6</span></label></div>` : ""}
+    ${d.typ==="raster" && !isNew ? `<div><button class="btn" data-a="rasterEdit" data-t="${M.id}">Raster dieser Leistung bearbeiten</button></div>` : ""}
+    ${isNew ? `<label class="chkline"><input type="checkbox" id="l_go" ${M.go!==false?"checked":""}> Danach direkt durchtippen</label>` : ""}
+    ${M.err ? `<div class="msg err">${esc(M.err)}</div>` : ""}
+  </div>
+  <div class="mfoot">${isNew ? "" : `<button class="btn danger ${M.armed?"armed":""}" data-a="lDel" style="margin-right:auto">${M.armed?"Wirklich löschen?":"Leistung löschen"}</button>`}
+    <button class="btn" data-a="close">Abbrechen</button><button class="btn primary" data-a="lSave">${isNew?"Anlegen":"Speichern"}</button></div>`;
+}
+function readLeistung(){
+  const d = M.d;
+  d.name = $("#l_name").value; d.date = $("#l_date").value; d.hj = Number($("#l_hj").value); d.weight = $("#l_w").value;
+  if ($("#l_late")) d.haLate = $("#l_late").value;
+  if ($("#l_miss")) d.haMissing = $("#l_miss").value;
+  if ($("#l_go")) M.go = $("#l_go").checked;
+}
+
+/* ---- Durchtippen: Leistung wählen ---- */
+function mDurch(){
+  const c = course(); const Ls = leistungen(c, c.hj||1);
+  return `${mHead("Durchtippen")}
+  <div class="mbody">
+    ${Ls.length ? `<p class="small muted" style="margin:0">Welche Leistung? Es geht beim ersten Code ohne Eintrag los.</p>
+    <div class="glist">${Ls.map(L => { const n = c.codes.filter(k => (L.grades||{})[k]).length;
+      return `<div><span><b>${esc(L.name)}</b> <span class="muted small">${L.art==="s"?"schriftlich":"mündlich"} · ${TYP[L.typ]}${L.date?" · "+dShort(L.date):""}</span></span><button class="btn small" data-a="durchStart" data-l="${L.id}">${n}/${c.codes.length} ›</button></div>`; }).join("")}</div>`
+    : `<p class="muted" style="margin:0">Im ${c.hj||1}. Halbjahr gibt es noch keine Leistung.</p>`}
+  </div>
+  <div class="mfoot"><button class="btn" data-a="lNew" data-art="m">+ Neue mündliche Note</button><button class="btn" data-a="close">Schließen</button></div>`;
+}
+
+/* ---- Eintrag für einen Code ---- */
+function seqInfo(){
+  const c = course(); const codes = sortCodes(c.codes); const i = codes.indexOf(M.k);
+  return {codes, i, n:codes.length, prev: i > 0 ? codes[i-1] : null, next: i < codes.length-1 ? codes[i+1] : null};
+}
+function keypad(sel){
+  const order = [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0];
+  return `<div class="keypad">${order.map(p => `<button class="b${bandOf(p)} ${p===0?"zero":""} ${sel===p?"sel":""}" data-a="kp" data-p="${p}">${String(p).padStart(2,"0")}<small>${NOTEN[p]}</small></button>`).join("")}</div>`;
+}
+function mEntry(){
+  const c = course(); const L = c.leistungen[M.l]; if (!L){ M = null; return ""; }
+  const g = (L.grades||{})[M.k]; const s = seqInfo(); const a = avgs(c, M.k, L.hj);
+  if (L.typ === "raster"){ M.wide = true; return mRasterEntry(c, L, g, s); }
+  M.wide = false;
+  const last = lastOral(c, M.k, L.hj);
+  const stats = `<div class="stats"><div class="stat"><span>Ø ${L.art==="s"?"schriftlich":"mündlich"}</span><b>${fmt(L.art==="s"?a.S:a.M)}</b></div><div class="stat"><span>Gesamt</span><b>${fmt(a.G)}${a.G!=null?" · "+NOTEN[rnd(a.G)]:""}</b></div><div class="stat"><span>Letzte mündl.</span><b style="font-size:.9rem">${last?dLong(last):"–"}</b></div></div>`;
+  let body = stats;
+  if (L.typ === "ha"){
+    const st = g && g.st || "ok";
+    body += `<div class="field">Abgabe<div class="seg">${Object.entries(HA_STAT).map(([k,l])=>`<button class="${st===k && !(g&&g.ent)?"on":""} ${k==="spaet"?"late":k==="fehlt"?"miss":""}" data-a="haSt" data-v="${k}">${l}</button>`).join("")}</div>
+      <span class="hint">${st==="spaet"?`Verspätet: Abzug ${L.haLate} P von der Note.`:st==="fehlt"?`Zählt mit ${L.haMissing} P. Eine Note wird ignoriert.`:"Erst den Status wählen, dann die Punkte. „Nicht eingereicht“ speichert sofort."}</span></div>`;
+    if (st !== "fehlt") body += keypad(g && !g.ent ? g.p : null);
+  } else {
+    body += keypad(g && !g.ent ? g.p : null);
+  }
+  return `${mHead(`${esc(L.name)} · Code ${esc(M.k)} <span class="muted small" style="font-weight:500">(${s.i+1}/${s.n})</span>`)}
+  <div class="mbody">${body}
+    <div class="row"><button class="btn" data-a="entEnt" style="flex:1">${g&&g.ent?"✓ ":""}entschuldigt (zählt nicht)</button><button class="btn danger" data-a="entClear" style="flex:1" ${g?"":"disabled"}>Eintrag löschen</button></div>
+  </div>
+  <div class="mfoot"><button class="btn" data-a="entGo" data-k="${esc(s.prev??"")}" ${s.prev==null?"disabled":""} style="margin-right:auto">‹ ${s.prev==null?"Zurück":"Code "+esc(s.prev)}</button>
+    <button class="btn" data-a="close">Fertig</button><button class="btn primary" data-a="entGo" data-k="${esc(s.next??"")}" ${s.next==null?"disabled":""}>${M.seq?"Weiter ohne Note":"Code "+esc(s.next??"")} ›</button></div>`;
+}
+function mRasterEntry(c, L, g, s){
+  const R = L.raster; const r = (g && g.r) || {}; const x = computeRaster(R, r);
+  const crits = R.criteria.filter(k => k.active);
+  const wTot = crits.filter(k=>!isZ(k)).reduce((t,k)=>t+(Number(k.weight)||0),0) || 1;
+  const body = crits.map(k => {
+    const val = (r.a||{})[k.id]; const nb = val === -1;
+    const sb = (val == null || nb) ? -1 : bandOf(val); const z = isZ(k), offs = k.offsets || DEF_OFFSETS;
+    return `<section class="crit ${nb?"off":""}"><div class="crithead"><div><b>${esc(k.name)}</b><span class="sub">${esc(k.sub||"")}</span></div>
+      <div class="row"><span class="w">${z?"Zu-/Abschlag":Math.round((Number(k.weight)||0)/wTot*100)+" %"}</span><button class="nb ${nb?"on":""}" data-a="rNb" data-c="${esc(k.id)}">nicht beobachtet</button></div></div>
+      <div class="levels">${k.levels.map((t,i)=>`<button class="lvl ${i===sb?"on":""}" data-a="rBand" data-c="${esc(k.id)}" data-i="${i}"><span class="st">${z?"Stufe "+(i+1)+" · "+sgn(Number(offs[i])||0)+" P":BAND[i]}</span><span class="tx">${esc(t)}</span></button>`).join("")}</div>
+      ${!z && sb >= 0 && sb < 5 ? `<div class="tend">Punkte: ${bandPts(sb).map(p=>`<button class="${p===val?"on":""}" data-a="rPts" data-c="${esc(k.id)}" data-p="${p}">${p}</button>`).join("")}</div>` : ""}</section>`;
+  }).join("") + (R.afbRule ? `<div class="afbbox"><b>Anforderungsbereiche insgesamt</b><span class="small muted">FA / Fachschaft: gut und sehr gut nur mit wesentlichem Anteil AFB III; ausreichend und befriedigend erfordern Leistungen über AFB I hinaus.</span>
+      <div class="levels">${AFB.map(o=>`<button class="lvl ${r.afb===o.v?"on":""}" data-a="rAfb" data-v="${o.v}"><span class="st">höchstens ${o.cap} P</span><span class="tx"><b>${o.t}</b><br>${o.d}</span></button>`).join("")}</div></div>` : "");
+  const res = x.fin != null ? `<div class="bigpts"><b>${x.fin}</b><span class="muted">Punkte</span><span class="n">${NOTEN[x.fin]}</span></div>
+      <div class="kv"><span class="muted">Qualitätsschnitt</span><span class="num">${fmt(x.avg)} P</span></div>
+      ${crits.some(isZ)?`<div class="kv"><span class="muted">Quantität</span><span class="num">${sgn(x.zus)} P</span></div>`:""}
+      ${x.korr?`<div class="kv"><span class="muted">Korrektur</span><span class="num">${sgn(x.korr)} P</span></div>`:""}
+      ${x.capped?`<div class="cap">Durch AFB-Einschätzung auf ${x.cap} P begrenzt.</div>`:""}
+      ${x.status!=="done"?`<div class="small" style="color:var(--amber)">Vorläufig: noch ${x.total-x.answered} Kriterien${!x.afbOk?" und AFB":""} offen. Zählt erst, wenn vollständig.</div>`:`<div class="small" style="color:var(--accent)">Vollständig, zählt in die Noten.</div>`}`
+    : `<div class="bigpts"><b class="muted">–</b><span class="muted">Punkte</span></div><div class="small muted">Noch kein Kriterium bewertet.</div>`;
+  return `${mHead(`${esc(L.name)} · Code ${esc(M.k)} <span class="muted small" style="font-weight:500">(${s.i+1}/${s.n})</span>`)}
+  <div class="mbody"><div class="rgrid"><div style="display:flex;flex-direction:column;gap:14px">${body}</div>
+    <aside class="rside">${res}
+      <label class="field">Korrektur<select id="r_korr">${[-3,-2,-1,0,1,2,3].map(k=>`<option value="${k}" ${(Number(r.korr)||0)===k?"selected":""}>${k>0?"+":""}${k} P</option>`).join("")}</select></label>
+      <label class="field">Notiz<textarea id="r_note" rows="3" placeholder="Beobachtungen, Begründung">${esc(r.note||"")}</textarea><span class="hint">Keine Namen eintragen.</span></label>
+      <button class="btn" data-a="entEnt">${g&&g.ent?"✓ ":""}entschuldigt</button>
+      <button class="btn danger" data-a="entClear" ${g?"":"disabled"}>Eintrag löschen</button>
+    </aside></div></div>
+  <div class="mfoot"><button class="btn" data-a="entGo" data-k="${esc(s.prev??"")}" ${s.prev==null?"disabled":""} style="margin-right:auto">‹ ${s.prev==null?"Zurück":"Code "+esc(s.prev)}</button>
+    <button class="btn" data-a="close">Fertig</button><button class="btn primary" data-a="entGo" data-k="${esc(s.next??"")}" ${s.next==null?"disabled":""}>Code ${esc(s.next??"")} ›</button></div>`;
+}
+
+/* ---- Code-Übersicht ---- */
+function mCode(){
+  const c = course(); const hj = c.hj || 1; const a = avgs(c, M.k, hj);
+  const Ls = leistungen(c, hj);
+  const list = Ls.map(L => { const g = (L.grades||{})[M.k]; const ci = cellInfo(L, g);
+    let extra = ""; if (L.typ==="ha" && g && g.st && g.st!=="ok") extra = " · " + HA_STAT[g.st]; if (g && g.ent) extra = " · entschuldigt";
+    return `<div><span>${esc(L.name)} <span class="muted small">${L.art==="s"?"schr.":"mündl."}${L.date?" · "+dShort(L.date):""}${Number(L.weight)>1?" · ×"+L.weight:""}${extra}</span></span><b class="num">${ci.t||"–"}</b></div>`; }).join("");
+  const s = seqInfo();
+  return `${mHead(`Code ${esc(M.k)} · ${hj}. Halbjahr`)}
+  <div class="mbody">
+    <div class="stats"><div class="stat"><span>Ø schriftlich</span><b>${fmt(a.S)}</b></div><div class="stat"><span>Ø mündlich</span><b>${fmt(a.M)}</b></div><div class="stat"><span>Gesamt</span><b>${fmt(a.G)}${a.G!=null?" · "+NOTEN[rnd(a.G)]:""}</b></div></div>
+    ${Ls.length ? `<div class="glist">${list}</div>` : `<p class="muted" style="margin:0">Noch keine Leistungen.</p>`}
+    <label class="field">Notizen zu Code ${esc(M.k)}<textarea id="c_note" rows="4" placeholder="Förderhinweise, Absprachen …">${esc((c.notes||{})[M.k]||"")}</textarea><span class="hint">Keine Namen eintragen.</span></label>
+  </div>
+  <div class="mfoot"><button class="btn" data-a="codeGo" data-k="${esc(s.prev??"")}" ${s.prev==null?"disabled":""} style="margin-right:auto">‹ ${s.prev==null?"Zurück":"Code "+esc(s.prev)}</button>
+    <button class="btn" data-a="close">Schließen</button><button class="btn" data-a="codeGo" data-k="${esc(s.next??"")}" ${s.next==null?"disabled":""}>Code ${esc(s.next??"")} ›</button></div>`;
+}
+
+/* ---- Raster-Editor ---- */
+function mRasterEdit(){
+  const d = M.d; M.wide = true;
+  const wsum = d.criteria.filter(c=>c.active && !isZ(c)).reduce((s,c)=>s+(Number(c.weight)||0),0);
+  return `${mHead(M.t === "template" ? "Raster-Vorlage bearbeiten" : "Raster dieser Leistung bearbeiten")}
+  <div class="mbody">
+    <label class="chkline"><input type="checkbox" id="r_afb" ${d.afbRule?"checked":""}> Anforderungsbereiche abfragen und Punkte begrenzen (AFB I höchstens 4 P, AFB II höchstens 9 P)</label>
+    <p class="small muted" style="margin:0">Stufentexte: genau sechs Zeilen, Note 1 zuerst. Qualitätskriterien gehen gewichtet in den Schnitt ein (Summe aktiv: ${wsum}); Quantität wirkt als fester Zu- oder Abschlag in Punkten.</p>
+    ${d.criteria.map((c,i)=>`<div class="rcrit" data-i="${i}">
+      <label>Kriterium<input type="text" data-f="name" value="${esc(c.name)}"></label>
+      <label>Gewicht<input type="number" min="0" data-f="weight" value="${esc(c.weight)}" ${isZ(c)?"disabled":""}></label>
+      <label class="chk"><input type="checkbox" data-f="active" ${c.active?"checked":""}> aktiv</label>
+      <button class="btn danger small" data-a="reDel" data-i="${i}">Entfernen</button>
+      <label class="full">Untertitel<input type="text" data-f="sub" value="${esc(c.sub||"")}"></label>
+      <label>Wirkung<select data-f="kind"><option value="q" ${isZ(c)?"":"selected"}>Qualität (gewichtet)</option><option value="zuschlag" ${isZ(c)?"selected":""}>Quantität (Zu-/Abschlag)</option></select></label>
+      <label style="grid-column:span 3">Zu-/Abschläge Stufe 1–6 (nur Quantität)<input type="text" data-f="offsets" value="${esc((c.offsets||DEF_OFFSETS).join("; "))}"></label>
+      <label class="full">Stufen Note 1 bis Note 6<textarea rows="6" data-f="levels">${esc(c.levels.join("\n"))}</textarea></label>
+    </div>`).join("")}
+    <div><button class="btn" data-a="reAdd">+ Kriterium hinzufügen</button></div>
+    ${M.err ? `<div class="msg err">${esc(M.err)}</div>` : ""}
+    ${M.t !== "template" ? `<p class="small muted" style="margin:0">Bereits eingetragene Bewertungen bleiben erhalten; Einträge zu entfernten Kriterien werden gelöscht.</p>` : ""}
+  </div>
+  <div class="mfoot"><button class="btn" data-a="close">Abbrechen</button><button class="btn primary" data-a="reSave">Übernehmen</button></div>`;
+}
+function readRaster(){
+  const d = M.d; d.afbRule = $("#r_afb").checked;
+  document.querySelectorAll(".rcrit").forEach(row => {
+    const c = d.criteria[Number(row.dataset.i)]; if (!c) return;
+    c.name = row.querySelector('[data-f="name"]').value; c.sub = row.querySelector('[data-f="sub"]').value;
+    c.weight = row.querySelector('[data-f="weight"]').value; c.active = row.querySelector('[data-f="active"]').checked;
+    c.kind = row.querySelector('[data-f="kind"]').value === "zuschlag" ? "zuschlag" : undefined;
+    c.offsets = row.querySelector('[data-f="offsets"]').value.split(/[;\s]+/).filter(Boolean).map(x => Number(x.replace("−","-").replace("+","")));
+    c.levels = row.querySelector('[data-f="levels"]').value.split("\n").map(s=>s.trim()).filter(Boolean);
+  });
+}
+
+/* ---- Export ---- */
+function csvOf(c, hj){
+  const Ls = leistungen(c, hj); const q = s => { s = String(s ?? ""); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const head = ["Code", ...Ls.map(L => `${L.name}${L.date?" ("+dShort(L.date)+")":""} [${L.art==="s"?"schr.":"mündl."}${Number(L.weight)>1?" x"+L.weight:""}]`), "Ø schriftlich","Ø mündlich","Gesamt","Note","Notiz"];
+  const lines = [head.map(q).join(";")];
+  sortCodes(c.codes).forEach(k => { const a = avgs(c, k, hj);
+    const cells = Ls.map(L => { const g = (L.grades||{})[k]; if (!g) return ""; if (g.ent) return "e"; const v = eff(L, g); if (v == null) return L.typ==="raster"?"…":""; return v + (L.typ==="ha"&&g.st==="spaet"?" v":L.typ==="ha"&&g.st==="fehlt"?" f":""); });
+    lines.push([k, ...cells, a.S!=null?fmt(a.S,2):"", a.M!=null?fmt(a.M,2):"", a.G!=null?fmt(a.G,2):"", a.G!=null?NOTEN[rnd(a.G)]:"", (c.notes||{})[k]||""].map(q).join(";")); });
+  return lines.join("\r\n");
+}
+function mExport(){
+  const c = course(); const hj = c.hj||1;
+  return `${mHead(`Export · ${esc(c.fach)} ${esc(c.gruppe||"")} · ${hj}. Halbjahr`)}
+  <div class="mbody"><p class="small muted" style="margin:0">CSV mit Semikolon, öffnet sich in Excel und Numbers. Enthält nur Codes, keine Namen.</p>
+    <textarea id="csvTa" rows="8" readonly class="num" style="font-size:.75rem">${esc(csvOf(c, hj))}</textarea><div id="copyMsg" class="small muted"></div></div>
+  <div class="mfoot"><button class="btn" data-a="csvCopy">Kopieren</button><button class="btn primary" data-a="csvDl">Als Datei speichern</button></div>`;
+}
+
+/* =========================================================
+   Aktionen
+   ========================================================= */
+function gradeSet(L, k, fn){ L.grades = L.grades || {}; const g = L.grades[k] = L.grades[k] || {}; fn(g); if (!Object.keys(g).length) delete L.grades[k]; save(); }
+function advance(){
+  const s = seqInfo();
+  if (s.next == null){ closeModal(); return; }
+  M.k = s.next; renderModal(); render();
+}
+function startSeq(lid){
+  const c = course(); const L = c.leistungen[lid]; const codes = sortCodes(c.codes);
+  const first = codes.find(k => !(L.grades||{})[k]) ?? codes[0];
+  openModal({type:"entry", l:lid, k:first, seq:true}); render();
+}
+function fileName(s){ return (s||"Export").replace(/[^\wäöüÄÖÜß\- ]+/g,"").trim().replace(/\s+/g,"_") || "Export"; }
+function download(name, text, type){
+  const blob = new Blob([text], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 4000);
+}
+function doBackup(){
+  db.lastBackup = Date.now(); save();
+  download(`Notenbuch_Backup_${today()}.json`, JSON.stringify(db), "application/json");
+  render();
+}
+
+const A = {
+  home(){ ui.view = "home"; saveUi(); render(); },
+  settings(){ ui.view = "settings"; saveUi(); render(); },
+  open(el){ ui.view = "kurs"; ui.cid = el.dataset.id; saveUi(); render(); window.scrollTo(0,0); },
+  hj(el){ const c = course(); c.hj = Number(el.dataset.v); save(); render(); },
+  filter(el){ ui.filter = el.dataset.v; saveUi(); render(); },
+  backup(){ doBackup(); },
+  kursNew(){ openModal({type:"kurs", d:{fach:"Geschichte", gruppe:"", codes:Array.from({length:20},(_,i)=>String(i+1)), wS:50}}); },
+  kursEdit(){ const c = course(); openModal({type:"kurs", id:c.id, d:{fach:c.fach, gruppe:c.gruppe, codes:sortCodes(c.codes), wS:c.wS}}); },
+  kFill(){ readKurs(); const n = Math.max(1, Math.min(60, Math.round(Number($("#k_n").value)||20))); M.d.codes = Array.from({length:n},(_,i)=>String(i+1)); renderModal(); },
+  kSave(){
+    readKurs(); const d = M.d; const ws = Number(d.wS);
+    const dup = d.codes.filter((k,i) => d.codes.indexOf(k) !== i);
+    if (!d.fach.trim()) M.err = "Fach fehlt.";
+    else if (!d.codes.length) M.err = "Mindestens ein Code nötig.";
+    else if (dup.length) M.err = "Doppelte Codes: " + [...new Set(dup)].join(", ");
+    else if (d.codes.some(k => k.length > 8)) M.err = "Codes höchstens 8 Zeichen.";
+    else if (!(ws >= 0 && ws <= 100)) M.err = "Anteil schriftlich muss zwischen 0 und 100 liegen.";
+    else M.err = null;
+    if (M.err){ renderModal(); return; }
+    if (M.id){ const c = db.courses[M.id]; Object.assign(c, {fach:d.fach.trim(), gruppe:d.gruppe.trim(), codes:d.codes, wS:ws}); }
+    else { const id = uid("k"); db.courses[id] = {id, fach:d.fach.trim(), gruppe:d.gruppe.trim(), codes:d.codes, wS:ws, hj:1, leistungen:{}, notes:{}, created:Date.now()}; ui.cid = id; ui.view = "kurs"; saveUi(); }
+    save(); closeModal();
+  },
+  kDel(){ if (!M.armed){ M.armed = true; renderModal(); return; } delete db.courses[M.id]; save(); ui.view = "home"; ui.cid = null; saveUi(); closeModal(); },
+  lNew(el){
+    const c = course(); const typ = el.dataset.typ || "note"; const art = el.dataset.art || "m";
+    openModal({type:"leistung", d:{name:"", date:today(), hj:c.hj||1, art, typ, weight:1, haLate:3, haMissing:0}, go:true});
+  },
+  lEdit(el){ const L = course().leistungen[el.dataset.id]; openModal({type:"leistung", id:L.id, d:{name:L.name, date:L.date, hj:L.hj, art:L.art, typ:L.typ, weight:L.weight, haLate:L.haLate??3, haMissing:L.haMissing??0}}); },
+  lSet(el){ readLeistung(); M.d[el.dataset.f] = el.dataset.v; renderModal(); },
+  lSave(){
+    readLeistung(); const d = M.d; const w = Number(d.weight);
+    if (!d.name.trim()) d.name = d.typ === "ha" ? "Hausaufgabe" : d.typ === "raster" ? "Unterrichtsbeiträge" : d.art === "s" ? "Klausur" : "Mitarbeit";
+    if (!(w > 0)) { M.err = "Gewichtung muss größer als 0 sein."; renderModal(); return; }
+    if (d.typ === "ha" && !(Number(d.haLate) >= 0 && Number(d.haLate) <= 15 && Number(d.haMissing) >= 0 && Number(d.haMissing) <= 15)) { M.err = "Abzug und Nichtabgabe-Wert zwischen 0 und 15."; renderModal(); return; }
+    const c = course(); let L;
+    if (M.id){ L = c.leistungen[M.id]; }
+    else { L = {id:uid("l"), grades:{}, created:Date.now()}; c.leistungen[L.id] = L; }
+    Object.assign(L, {name:d.name.trim(), date:d.date||"", hj:d.hj, art:d.art, typ:d.typ, weight:w});
+    if (d.typ === "ha"){ L.haLate = Number(d.haLate); L.haMissing = Number(d.haMissing); }
+    if (d.typ === "raster" && !L.raster) L.raster = clone(db.template);
+    if (L.hj !== (c.hj||1)) c.hj = L.hj;
+    save();
+    const go = !M.id && M.go;
+    M = null; $("#modalRoot").innerHTML = "";
+    if (go) startSeq(L.id); else render();
+  },
+  lDel(){ if (!M.armed){ M.armed = true; renderModal(); return; } delete course().leistungen[M.id]; save(); closeModal(); },
+  durchPick(){ openModal({type:"durch"}); },
+  durchStart(el){ M = null; startSeq(el.dataset.l); },
+  entry(el){ openModal({type:"entry", l:el.dataset.l, k:el.dataset.k, seq:false}); },
+  kp(el){
+    const L = course().leistungen[M.l]; const p = Number(el.dataset.p);
+    gradeSet(L, M.k, g => { delete g.ent; g.p = p; });
+    if (M.seq) advance(); else closeModal();
+  },
+  haSt(el){
+    const L = course().leistungen[M.l]; const v = el.dataset.v;
+    gradeSet(L, M.k, g => { delete g.ent; if (v === "ok") delete g.st; else g.st = v; });
+    if (v === "fehlt" && M.seq) advance(); else { renderModal(); render(); }
+  },
+  entEnt(){ const L = course().leistungen[M.l]; gradeSet(L, M.k, g => { if (g.ent) delete g.ent; else { Object.keys(g).forEach(k => { if (k !== "r") delete g[k]; }); g.ent = true; } }); if (M.seq) advance(); else { renderModal(); render(); } },
+  entClear(){ const L = course().leistungen[M.l]; delete (L.grades||{})[M.k]; save(); renderModal(); render(); },
+  entGo(el){ if (el.dataset.k === "") return; M.k = el.dataset.k; renderModal(); render(); const bg = document.querySelector(".modal-bg"); if (bg) bg.scrollTop = 0; },
+  rBand(el){ const L = course().leistungen[M.l]; const cid = el.dataset.c, i = Number(el.dataset.i);
+    gradeSet(L, M.k, g => { delete g.ent; g.r = g.r || {}; g.r.a = g.r.a || {}; const old = g.r.a[cid]; if (old != null && old >= 0 && bandOf(old) === i) delete g.r.a[cid]; else g.r.a[cid] = bandMid(i); });
+    M.keepScroll = true; renderModal(); render(); },
+  rPts(el){ const L = course().leistungen[M.l]; gradeSet(L, M.k, g => { g.r = g.r || {}; g.r.a = g.r.a || {}; g.r.a[el.dataset.c] = Number(el.dataset.p); }); M.keepScroll = true; renderModal(); render(); },
+  rNb(el){ const L = course().leistungen[M.l]; const cid = el.dataset.c; gradeSet(L, M.k, g => { g.r = g.r || {}; g.r.a = g.r.a || {}; if (g.r.a[cid] === -1) delete g.r.a[cid]; else g.r.a[cid] = -1; }); M.keepScroll = true; renderModal(); render(); },
+  rAfb(el){ const L = course().leistungen[M.l]; const v = Number(el.dataset.v); gradeSet(L, M.k, g => { g.r = g.r || {}; g.r.afb = g.r.afb === v ? undefined : v; if (g.r.afb === undefined) delete g.r.afb; }); M.keepScroll = true; renderModal(); render(); },
+  code(el){ openModal({type:"code", k:el.dataset.k}); },
+  codeGo(el){ if (el.dataset.k === "") return; M.k = el.dataset.k; renderModal(); },
+  rasterEdit(el){ const t = el.dataset.t; const src = t === "template" ? db.template : course().leistungen[t].raster; openModal({type:"raster", t, d:clone(src), back: M && M.type === "leistung" ? {type:"leistung", id:M.id, d:M.d} : null}); },
+  reAdd(){ readRaster(); M.d.criteria.push({id:uid("c"), name:"Neues Kriterium", sub:"", weight:10, active:true, levels:["Note 1","Note 2","Note 3","Note 4","Note 5","Note 6"]}); renderModal(); },
+  reDel(el){ readRaster(); M.d.criteria.splice(Number(el.dataset.i),1); renderModal(); },
+  reSave(){
+    readRaster(); const d = M.d; const errs = [];
+    if (!d.criteria.some(c=>c.active && !isZ(c))) errs.push("Mindestens ein aktives Qualitätskriterium nötig.");
+    d.criteria.forEach((c,i) => {
+      if (!c.name.trim()) errs.push(`Kriterium ${i+1}: Name fehlt.`);
+      if (c.levels.length !== 6) errs.push(`„${c.name||i+1}“: ${c.levels.length} statt 6 Stufenzeilen.`);
+      if (isZ(c) && (c.offsets.length !== 6 || c.offsets.some(o=>!Number.isFinite(o)))) errs.push(`„${c.name}“: genau sechs Zu-/Abschläge, z. B. 2; 1; 0; -1; -2; -3.`);
+      if (c.active && !isZ(c) && !(Number(c.weight) > 0)) errs.push(`„${c.name}“: Gewicht muss größer als 0 sein.`);
+    });
+    if (errs.length){ M.err = errs.join(" "); renderModal(); return; }
+    const clean = {afbRule:!!d.afbRule, criteria:d.criteria.map(c => { const o = {id:c.id, name:c.name.trim(), sub:(c.sub||"").trim(), weight:Number(c.weight)||0, active:!!c.active, levels:c.levels.slice()}; if (isZ(c)){ o.kind = "zuschlag"; o.offsets = c.offsets.slice(); } return o; })};
+    if (M.t === "template") db.template = clean;
+    else {
+      const L = course().leistungen[M.t]; L.raster = clean; const ids = new Set(clean.criteria.map(c=>c.id));
+      Object.values(L.grades||{}).forEach(g => { if (g.r && g.r.a) Object.keys(g.r.a).forEach(k => { if (!ids.has(k)) delete g.r.a[k]; }); });
+    }
+    save();
+    const back = M.back; if (back){ M = back; renderModal(); render(); } else closeModal();
+  },
+  templateReset(el){ if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Wirklich zurücksetzen?"; el.classList.add("danger","armed"); return; } db.template = clone(TEMPLATE); save(); render(); },
+  persist: async function(){ try{ if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){} persistInfo(); },
+  restorePick(){ $("#restoreFile").click(); },
+  export(){ openModal({type:"export"}); },
+  csvCopy: async function(){ const t = $("#csvTa"); try{ await navigator.clipboard.writeText(t.value); $("#copyMsg").textContent = "Kopiert."; }catch(e){ t.focus(); t.select(); $("#copyMsg").textContent = "Markiert. Kopieren über das Menü."; } },
+  csvDl(){ const c = course(); download(fileName(`${c.fach}_${c.gruppe}_HJ${c.hj||1}`) + ".csv", "﻿" + csvOf(c, c.hj||1), "text/csv;charset=utf-8"); },
+  close(){ closeModal(); },
+  bgclose(el, ev){ if (ev.target === el) closeModal(); }
+};
+
+document.addEventListener("click", ev => {
+  const el = ev.target.closest("[data-a]"); if (!el || el.disabled) return;
+  const fn = A[el.dataset.a]; if (!fn) return;
+  if (el.dataset.a === "bgclose" && ev.target !== el) return;
+  fn(el, ev);
+});
+document.addEventListener("change", ev => {
+  const t = ev.target;
+  if (t.id === "r_korr" && M){ const L = course().leistungen[M.l]; gradeSet(L, M.k, g => { g.r = g.r || {}; g.r.korr = Number(t.value); }); M.keepScroll = true; renderModal(); render(); }
+  if (t.id === "restoreFile" && t.files && t.files[0]){
+    const fr = new FileReader();
+    fr.onload = () => {
+      const msg = $("#restoreMsg");
+      try{
+        const obj = JSON.parse(fr.result);
+        if (!obj || typeof obj.courses !== "object") throw new Error("x");
+        const n = Object.keys(obj.courses).length;
+        msg.innerHTML = `<div class="msg err" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><span>Backup mit ${n} ${n===1?"Kurs":"Kursen"} gefunden. Einspielen ersetzt alle aktuellen Daten auf diesem Gerät.</span><button class="btn small danger armed" id="restoreGo">Ersetzen</button></div>`;
+        $("#restoreGo").onclick = () => { db = obj; if (!db.template) db.template = clone(TEMPLATE); save(); ui.view = "home"; saveUi(); render(); };
+      }catch(e){ msg.innerHTML = `<div class="msg err">Die Datei ist kein Notenbuch-Backup.</div>`; }
+      t.value = "";
+    };
+    fr.readAsText(t.files[0]);
+  }
+});
+let noteT = null;
+document.addEventListener("input", ev => {
+  const t = ev.target;
+  if (t.id === "r_note" && M){ const L = course().leistungen[M.l], k = M.k, v = t.value; clearTimeout(noteT); noteT = setTimeout(() => gradeSet(L, k, g => { g.r = g.r || {}; g.r.note = v; }), 400); }
+  if (t.id === "c_note" && M){ const c = course(), k = M.k, v = t.value; clearTimeout(noteT); noteT = setTimeout(() => { c.notes = c.notes || {}; if (v.trim()) c.notes[k] = v; else delete c.notes[k]; save(); }, 400); }
+});
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && M) closeModal();
+});
+
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+save(); render();
+})();
+</script>
+</body>
+</html>
