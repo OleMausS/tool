@@ -222,8 +222,19 @@ const DEF_OFFSETS = [2,1,0,-1,-2,-3];
 const isZ = c => c.kind === "zuschlag";
 const sgn = n => (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n);
 
+const AFB_GESCH = {
+  caps:[4,9,15],
+  hint:"FA / Fachschaft Geschichte: gut und sehr gut nur mit wesentlichem Anteil AFB III; ausreichend und befriedigend erfordern Leistungen über AFB I hinaus.",
+  text:[{t:"Überwiegend AFB I", d:"Wiedergabe von Gelerntem, reproduktiv"},{t:"Über AFB I hinaus, Schwerpunkt AFB II", d:"Erklären, Ordnen, Anwenden auf neue Sachverhalte"},{t:"Deutlich über AFB II, wesentlicher Anteil AFB III", d:"Eigenständige Begründungen, Deutungen, Wertungen"}]
+};
+const AFB_MATHE = {
+  caps:[4,15,15],
+  hint:"FA Mathematik: Nur wenn über reproduzierende Tätigkeiten hinaus im AFB II eigenständig erfolgreich gearbeitet wird, kann von mathematischer Kompetenz gesprochen werden.",
+  text:[{t:"Überwiegend AFB I: Reproduzieren", d:"Begriffe, Sätze und Verfahren wiedergeben und direkt anwenden"},{t:"Eigenständig in AFB II: Zusammenhänge herstellen", d:"Kenntnisse und Verfahren verknüpfen, auf Bekanntes übertragen"},{t:"Auch AFB III: Verallgemeinern und Reflektieren", d:"Eigene Problemformulierungen, Begründungen, Interpretationen"}]
+};
 const TEMPLATE = {
-  afbRule: true,
+  id:"geschichte", name:"Geschichte · Unterrichtsbeiträge", builtin:true,
+  afbRule: true, afbCaps: AFB_GESCH.caps, afbHint: AFB_GESCH.hint, afbText: AFB_GESCH.text,
   criteria: [
     {id:"ver", name:"Verständnis", sub:"Zusammenhänge erkennen und einordnen", weight:15, active:true, levels:[
       "Müheloses Erkennen von Zusammenhängen; neue Probleme werden selbstständig in größere Zusammenhänge eingeordnet",
@@ -284,6 +295,88 @@ const TEMPLATE = {
   ]
 };
 
+
+const TEI = {id:"tei", name:"Teilnahme (Quantität)", sub:"Nur Häufigkeit und Kontinuität, nicht Richtigkeit", kind:"zuschlag", offsets:[2,1,0,-1,-2,-3], weight:0, active:true, levels:[
+  "Beteiligt sich in jeder Stunde und in allen Phasen mehrfach, auch unaufgefordert",
+  "Beteiligt sich regelmäßig in allen Unterrichtsphasen",
+  "Beteiligt sich regelmäßig, vor allem bei vertrauten Inhalten; meist aus eigenem Antrieb",
+  "Beteiligt sich selten, meist nur auf Aufforderung",
+  "Beteiligt sich sehr selten, nur nach Aufforderung",
+  "Beteiligt sich fast nie, auch auf Aufforderung kaum"]};
+const TEMPLATE_MATHE = {
+  id:"mathe", name:"Mathematik · Unterrichtsbeiträge (K1–K6)", builtin:true,
+  afbRule: true, afbCaps: AFB_MATHE.caps, afbHint: AFB_MATHE.hint, afbText: AFB_MATHE.text,
+  criteria: [
+    {id:"k1", name:"K1 Mathematisch argumentieren", sub:"Begründungen entwickeln, Argumentationen nachvollziehen, hinterfragen, bewerten", weight:15, active:true, levels:[
+      "Entwickelt auch komplexe Begründungen eigenständig; vergleicht und bewertet verschiedene Argumentationen; äußert und hinterfragt Vermutungen begründet",
+      "Entwickelt mehrschrittige Begründungen sicher; begründet Lösungswege; bewertet Ergebnisse im Kontext",
+      "Erläutert überschaubare mehrschrittige Argumentationen; begründet Lösungswege meist nachvollziehbar",
+      "Gibt Routineargumentationen wieder; mehrschrittige Begründungen nur mit Hilfe",
+      "Argumentiert nur mit Alltagswissen oder lückenhaft; Begründungen meist nicht tragfähig",
+      "Keine Begründungen erkennbar"]},
+    {id:"k2", name:"K2 Probleme mathematisch lösen", sub:"Strategien auswählen und einsetzen, Lösungen und Lösungswege bewerten", weight:15, active:true, levels:[
+      "Löst anspruchsvolle, unvertraute Probleme; reflektiert Lösungsideen und Lösungswege",
+      "Wählt selbstständig geeignete Strategien, kombiniert Verfahren, nutzt heuristische Hilfsmittel, prüft die Plausibilität",
+      "Löst Probleme mit bekannten Verfahren; wählt Strategien überwiegend passend, teils nach Impuls",
+      "Löst Routineaufgaben; bei unvertrauten Problemen nur mit Hilfe",
+      "Löst Routineaufgaben lückenhaft; weiß sich kaum zu helfen",
+      "Kein Lösungsansatz erkennbar"]},
+    {id:"k3", name:"K3 Mathematisch modellieren", sub:"Zwischen Realsituation und Mathematik wechseln, Modelle bilden, interpretieren, validieren", weight:10, active:true, levels:[
+      "Modelliert komplexe oder unvertraute Situationen; reflektiert verwendete Modelle und beurteilt sie kritisch",
+      "Nimmt mehrschrittige Modellierungen vor; interpretiert Ergebnisse und prüft sie an der Ausgangssituation",
+      "Modelliert überschaubare Situationen; interpretiert Ergebnisse im Kontext meist zutreffend",
+      "Nutzt vertraute, direkt erkennbare Modelle; prüft Resultate kaum am Kontext",
+      "Ordnet Situationen nur mit Hilfe mathematische Objekte zu",
+      "Kein Übergang zwischen Realsituation und Mathematik erkennbar"]},
+    {id:"k4", name:"K4 Mathematische Darstellungen verwenden", sub:"Diagramme, Graphen, Tabellen, Terme, Skizzen nutzen, wechseln, beurteilen", weight:10, active:true, levels:[
+      "Entwickelt eigene Darstellungen; beurteilt Darstellungsformen zweckentsprechend; liest auch unvertraute Darstellungen",
+      "Wechselt sicher zwischen Darstellungsformen und erkennt ihre Beziehungen",
+      "Nutzt und fertigt vertraute Darstellungen korrekt an; Wechsel gelingt meist",
+      "Nutzt geübte Darstellungen mit Fehlern; Wechsel nur mit Hilfe",
+      "Entnimmt Darstellungen nur einzelne Informationen; fertigt sie fehlerhaft an",
+      "Nutzt keine Darstellungen"]},
+    {id:"k5", name:"K5 Symbolisch, formal, technisch arbeiten", sub:"Verfahren ausführen, mit Termen und Gleichungen arbeiten, Werkzeuge nutzen", weight:15, active:true, levels:[
+      "Führt Verfahren sicher und effizient aus; bewertet Lösungs- und Kontrollverfahren; reflektiert Möglichkeiten und Grenzen digitaler Werkzeuge",
+      "Rechnet und formt sicher um; übersetzt zwischen Symbolsprache und natürlicher Sprache; wählt Werkzeuge sachgerecht",
+      "Führt Routineverfahren überwiegend korrekt aus; nutzt Werkzeuge in geübten Situationen",
+      "Routineverfahren mit häufigen Fehlern; Werkzeuge nur nach Anleitung",
+      "Routineverfahren meist fehlerhaft; Umgang mit Formeln und Symbolen unsicher",
+      "Führt keine Verfahren aus"]},
+    {id:"k6", name:"K6 Mathematisch kommunizieren", sub:"Überlegungen und Ergebnisse in Fachsprache darlegen, auf andere eingehen, mit Fehlern umgehen", weight:15, active:true, levels:[
+      "Präsentiert komplexe Sachverhalte mündlich und schriftlich präzise; bewertet Äußerungen anderer fachlich",
+      "Stellt Lösungswege verständlich und adressatengerecht dar; geht auf andere ein; nutzt Fehler konstruktiv",
+      "Stellt Überlegungen und Ergebnisse meist verständlich dar; Fachsprache überwiegend angemessen",
+      "Drückt einfache Sachverhalte aus; Fachsprache lückenhaft; reagiert sachlich auf Fragen",
+      "Äußerungen kaum nachvollziehbar; Fachsprache fehlt weitgehend",
+      "Keine verwertbaren fachlichen Äußerungen"]},
+    Object.assign({}, TEI),
+    {id:"koop", name:"Kooperative Aufgabenerfüllung", sub:"Partner- und Gruppenarbeit", weight:10, active:false, levels:[
+      "Treibt die gemeinsame Bearbeitung fachlich voran; erklärt anderen Lösungswege; sichert das Ergebnis",
+      "Bringt eigene Lösungsideen ein und greift Ideen anderer auf",
+      "Arbeitet zuverlässig mit; übernimmt Teilaufgaben",
+      "Arbeitet mit, übernimmt aber kaum eigene Teile",
+      "Beteiligt sich nur nach Aufforderung",
+      "Beteiligt sich nicht oder stört die Zusammenarbeit"]},
+    {id:"praes", name:"Präsentation und Lernprozessdokumentation", sub:"Umfangreichere Beiträge, z. B. Wochenaufgabe, Lerntagebuch, Präsentation", weight:15, active:false, levels:[
+      "Vollständig, fachlich korrekt, eigenständig; Lösungswege und eigene Fehler reflektiert; klar strukturiert",
+      "Vollständig und weitgehend korrekt; Lösungswege nachvollziehbar dokumentiert",
+      "Weitgehend vollständig; kleinere fachliche Fehler; Struktur erkennbar",
+      "Lückenhaft; mehrere Fehler; Lösungswege nur teilweise dokumentiert",
+      "Stark lückenhaft oder überwiegend fehlerhaft",
+      "Nicht erbracht oder ohne fachlichen Gehalt"]}
+  ]
+};
+function freshTemplates(){ return {geschichte: clone(TEMPLATE), mathe: clone(TEMPLATE_MATHE)}; }
+function afbOpts(R){ const t = R.afbText || AFB_GESCH.text, c = R.afbCaps || AFB_GESCH.caps; return [0,1,2].map(i => ({v:i+1, t:t[i].t, d:t[i].d, cap:Number(c[i])})); }
+function migrate(d){
+  if (!d.templates){ d.templates = {}; if (d.template){ const g = Object.assign(clone(TEMPLATE), d.template, {id:"geschichte", name:TEMPLATE.name, builtin:true}); if (!g.afbCaps){ g.afbCaps = AFB_GESCH.caps; g.afbHint = AFB_GESCH.hint; g.afbText = AFB_GESCH.text; } d.templates.geschichte = g; } }
+  delete d.template;
+  const f = freshTemplates(); if (!d.templates.geschichte) d.templates.geschichte = f.geschichte; if (!d.templates.mathe) d.templates.mathe = f.mathe;
+  Object.values(d.courses||{}).forEach(c => Object.values(c.leistungen||{}).forEach(L => { if (L.raster && !L.raster.afbCaps){ L.raster.afbCaps = AFB_GESCH.caps; L.raster.afbHint = AFB_GESCH.hint; L.raster.afbText = AFB_GESCH.text; } }));
+  return d;
+}
+function defaultTpl(c){ return /mathe/i.test((c && c.fach) || "") && db.templates.mathe ? "mathe" : (db.templates.geschichte ? "geschichte" : Object.keys(db.templates)[0]); }
+
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -299,8 +392,7 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return tru
 /* =========================================================
    Daten
    ========================================================= */
-let db = lsGet(LS) || {version:1, courses:{}, template: clone(TEMPLATE), lastBackup:null, created:Date.now()};
-if (!db.template) db.template = clone(TEMPLATE);
+let db = migrate(lsGet(LS) || {version:1, courses:{}, lastBackup:null, created:Date.now()});
 const ui = Object.assign({view:"home", cid:null, filter:"alle"}, lsGet(UIKEY) || {});
 let saveOk = true;
 function save(){ saveOk = lsSet(LS, db); }
@@ -333,7 +425,7 @@ function computeRaster(R, r){
   const raw = Math.max(0, Math.min(15, rnd(avg + zus)));
   const korr = Number(r.korr)||0;
   let fin = Math.max(0, Math.min(15, raw + korr)), cap = 15, capped = false;
-  if (R.afbRule && r.afb){ cap = AFB.find(x => x.v === r.afb).cap; if (fin > cap){ fin = cap; capped = true; } }
+  if (R.afbRule && r.afb){ cap = afbOpts(R)[r.afb-1].cap; if (fin > cap){ fin = cap; capped = true; } }
   return {status: answered === crits.length && afbOk ? "done" : "teil", answered, total:crits.length, avg, zus, raw, korr, fin, cap, capped, afbOk};
 }
 /* Wert, der in die Durchschnitte eingeht (null = zählt nicht) */
@@ -425,8 +517,11 @@ function renderKurs(app){
   const Ls = leistungen(c, hj, f);
   const codes = sortCodes(c.codes);
   const hasM = leistungen(c, hj).some(L => L.art === "m");
+  const mL = leistungen(c, hj).filter(L => L.art === "m");
+  const wM = mL.reduce((t,L)=>t+(Number(L.weight)||1),0), wT = mL.filter(L=>L.test).reduce((t,L)=>t+(Number(L.weight)||1),0);
+  const testWarn = wT > 0 && wT / wM >= 1/3;
   const nStale = hasM ? codes.filter(k => stale(c, k, hj)).length : 0;
-  const head = Ls.map(L => `<th class="${L.art}"><button data-a="lEdit" data-id="${L.id}" title="${esc(L.name)} bearbeiten">${esc(L.name)}${L.typ!=="note"?`<span class="typ">${L.typ==="ha"?"HA":"R"}</span>`:""}</button><span class="d">${dShort(L.date)}${Number(L.weight)>1?" · ×"+L.weight:""}</span></th>`).join("");
+  const head = Ls.map(L => `<th class="${L.art}"><button data-a="lEdit" data-id="${L.id}" title="${esc(L.name)} bearbeiten">${esc(L.name)}${L.typ!=="note"||L.test?`<span class="typ">${L.test?"T":L.typ==="ha"?"HA":"R"}</span>`:""}</button><span class="d">${dShort(L.date)}${Number(L.weight)>1?" · ×"+L.weight:""}</span></th>`).join("");
   const rows = codes.map(k => {
     const a = avgs(c, k, hj);
     const cells = Ls.map(L => { const ci = cellInfo(L, (L.grades||{})[k]); return `<td class="cell"><button class="${ci.cls}" data-a="entry" data-l="${L.id}" data-k="${esc(k)}" ${ci.title?`title="${ci.title}"`:""} aria-label="${esc(L.name)}, Code ${esc(k)}">${ci.t}${ci.suf?`<span class="suffix">${ci.suf}</span>`:""}</button></td>`; }).join("");
@@ -445,11 +540,13 @@ function renderKurs(app){
   <div class="tabs"><button class="${hj===1?"on":""}" data-a="hj" data-v="1">1. Halbjahr</button><button class="${hj===2?"on":""}" data-a="hj" data-v="2">2. Halbjahr</button></div>
   <div class="spread">
     <div class="seg"><button class="${f==="alle"?"on":""}" data-a="filter" data-v="alle">Gesamt</button><button class="${f==="s"?"on":""}" data-a="filter" data-v="s">Schriftlich</button><button class="${f==="m"?"on":""}" data-a="filter" data-v="m">Mündlich</button></div>
-    <div class="row"><button class="btn" data-a="lNew" data-art="s">+ Schriftlich</button><button class="btn" data-a="lNew" data-art="m">+ Mündlich</button><button class="btn" data-a="lNew" data-art="m" data-typ="ha">+ HA</button><button class="btn" data-a="lNew" data-art="m" data-typ="raster">+ Raster</button><button class="btn primary" data-a="durchPick">Durchtippen</button></div>
+    <div class="row"><button class="btn" data-a="lNew" data-art="s">+ Schriftlich</button><button class="btn" data-a="lNew" data-art="m">+ Mündlich</button><button class="btn" data-a="lNew" data-art="m" data-test="1">+ Test</button><button class="btn" data-a="lNew" data-art="m" data-typ="ha">+ HA</button><button class="btn" data-a="lNew" data-art="m" data-typ="raster">+ Raster</button><button class="btn primary" data-a="durchPick">Durchtippen</button></div>
   </div>
+  ${testWarn ? `<div class="banner"><span><span class="dot"></span> Tests machen ${Math.round(wT/wM*100)} % der Gewichte im mündlichen Bereich aus. Die FA Mathematik erlauben weniger als ein Drittel.</span></div>` : ""}
+  ${Number(c.wS) >= 50 ? `<div class="banner"><span><span class="dot"></span> Schriftlich zählt ${c.wS} %. Laut Fachanforderungen haben die Unterrichtsbeiträge das stärkere Gewicht.</span><button class="btn small" data-a="kursEdit">Ändern</button></div>` : ""}
   ${nStale ? `<div class="banner info"><span><span class="dot"></span> ${nStale} ${nStale===1?"Code":"Codes"} ohne mündliche Note in den letzten 21 Tagen.</span></div>` : ""}
   ${leistungen(c, hj).length ? `<div class="tablewrap"><table class="grid"><thead><tr><th class="code">Code</th>${head}${avgHead}<th class="g tot">Gesamt</th></tr></thead><tbody>${rows}</tbody></table></div>
-  <div class="legend"><span>Zelle antippen: Note eintragen</span><span>Spaltenkopf: Leistung bearbeiten</span><span>v = verspätet · f = nicht eingereicht · e = entschuldigt · … = Raster begonnen</span></div>`
+  <div class="legend"><span>Zelle antippen: Note eintragen</span><span>Spaltenkopf: Leistung bearbeiten</span><span>T = Test · R = Raster · HA = Hausaufgabe · v = verspätet · f = nicht eingereicht · e = entschuldigt · … = Raster begonnen</span></div>`
   : `<div class="panel empty"><h2>Noch keine Leistungen im ${hj}. Halbjahr</h2><p class="muted" style="margin:0;max-width:52ch">Lege eine schriftliche oder mündliche Leistung, eine Hausaufgabe oder eine Rasterbewertung an. Jede Leistung wird eine Spalte.</p>
     <div class="row" style="justify-content:center"><button class="btn primary" data-a="lNew" data-art="m">+ Mündliche Note</button><button class="btn" data-a="lNew" data-art="m" data-typ="raster">+ Rasterbewertung</button></div></div>`}`;
 }
@@ -464,17 +561,18 @@ function renderSettings(app){
     <div id="restoreMsg"></div>
   </div>
   <div class="panel" style="display:flex;flex-direction:column;gap:12px">
-    <h2>Raster-Vorlage</h2>
-    <p class="small muted" style="margin:0">Neue Rasterbewertungen kopieren diese Vorlage. Änderungen hier wirken nicht auf bereits angelegte Raster-Spalten; die bearbeitest du über ihren Spaltenkopf.</p>
-    <div class="small">${db.template.criteria.filter(c=>c.active).map(c=>esc(c.name)).join(" · ")}${db.template.afbRule?" · AFB-Begrenzung an":""}</div>
-    <div class="row"><button class="btn" data-a="rasterEdit" data-t="template">Vorlage bearbeiten</button><button class="btn" data-a="templateReset" id="tplReset">Auf Standard zurücksetzen</button></div>
+    <h2>Raster-Vorlagen</h2>
+    <p class="small muted" style="margin:0">Neue Rasterbewertungen kopieren eine Vorlage. In Kursen mit „Mathe“ im Fachnamen ist die Mathematik-Vorlage vorausgewählt. Änderungen hier wirken nicht auf bereits angelegte Raster-Spalten; die bearbeitest du über ihren Spaltenkopf.</p>
+    <div class="glist">${Object.values(db.templates).map(t => `<div style="flex-wrap:wrap"><span><b>${esc(t.name)}</b><br><span class="small muted">${t.criteria.filter(c=>c.active).map(c=>esc(c.name)).join(" · ")}${t.afbRule?" · AFB-Begrenzung":""}</span></span>
+      <span class="row"><button class="btn small" data-a="rasterEdit" data-t="tpl:${esc(t.id)}">Bearbeiten</button><button class="btn small" data-a="tplDup" data-id="${esc(t.id)}">Duplizieren</button>
+      ${t.builtin ? `<button class="btn small" data-a="tplReset" data-id="${esc(t.id)}">Standard</button>` : `<button class="btn small danger" data-a="tplDel" data-id="${esc(t.id)}">Löschen</button>`}</span></div>`).join("")}</div>
   </div>
   <div class="panel" style="display:flex;flex-direction:column;gap:10px">
     <h2>Speicher</h2>
     <div class="small" id="persistInfo">Wird geprüft …</div>
     <div class="row"><button class="btn" data-a="persist">Dauerhaften Speicher anfordern</button></div>
   </div>
-  <p class="src">Rastergrundlage: Fachanforderungen Geschichte SH 2016 (Sek II, Kap. 5), Fachschaftsbeschluss Geschichte 09/2022, „Kriterien zur Beurteilung der Unterrichtsbeiträge“, Ernst Klett Verlag 2012, S. 21 (für den eigenen Unterrichtsgebrauch). Notenpunkte → Note: 15 = 1+ … 0 = 6. Gesamtnote = gewichteter Mittelwert aus Ø schriftlich und Ø mündlich, gerundet ab ,5.</p>`;
+  <p class="src">Raster Geschichte: Fachanforderungen Geschichte SH 2016 (Sek II, Kap. 5), Fachschaftsbeschluss Geschichte 09/2022, „Kriterien zur Beurteilung der Unterrichtsbeiträge“, Ernst Klett Verlag 2012, S. 21 (für den eigenen Unterrichtsgebrauch). Raster Mathematik: Fachanforderungen Mathematik SH 2014, allgemeine mathematische Kompetenzen K1–K6 mit Anforderungsbereichen (S. 18 f.), Leistungsbewertung Sek I und II (S. 42 f., 68 f.). Notenpunkte → Note: 15 = 1+ … 0 = 6. Gesamtnote = gewichteter Mittelwert aus Ø schriftlich und Ø mündlich, gerundet ab ,5.</p>`;
   persistInfo();
 }
 async function persistInfo(){
@@ -514,7 +612,7 @@ function mKurs(){
     <label class="field">Codes<textarea id="k_codes" rows="3">${esc(d.codes.join(", "))}</textarea>
       <span class="hint">Durch Komma oder Leerzeichen getrennt. Die Zuordnung Code → Person bleibt auf Papier.</span></label>
     <div class="row"><input type="number" id="k_n" min="1" max="60" value="${d.codes.length||20}" style="width:90px"><button class="btn small" data-a="kFill">Codes 1 bis n setzen</button></div>
-    <label class="field">Anteil schriftlich an der Gesamtnote (%)<input type="number" id="k_ws" min="0" max="100" value="${esc(d.wS)}"><span class="hint">Der Rest ist mündlich. Mit dem Fachschaftsbeschluss abgleichen.</span></label>
+    <label class="field">Anteil schriftlich an der Gesamtnote (%)<input type="number" id="k_ws" min="0" max="100" value="${esc(d.wS)}"><span class="hint">Der Rest sind Unterrichtsbeiträge. Laut Fachanforderungen (Geschichte und Mathematik) haben die Unterrichtsbeiträge das stärkere Gewicht, der Wert muss also unter 50 liegen. Die genaue Zahl legt die Fachschaft fest.</span></label>
     ${M.err ? `<div class="msg err">${esc(M.err)}</div>` : ""}
   </div>
   <div class="mfoot">${isNew ? "" : `<button class="btn danger ${M.armed?"armed":""}" data-a="kDel" style="margin-right:auto">${M.armed?"Wirklich löschen? Alle Noten weg":"Kurs löschen"}</button>`}
@@ -541,7 +639,9 @@ function mLeistung(){
     <label class="field">Gewichtung: zählt n-fach<input type="number" id="l_w" min="0.5" step="0.5" value="${esc(d.weight)}"><span class="hint">Standard 1. Bei 2 wiegt diese Note so viel wie zwei einfache Noten desselben Bereichs.</span></label>
     ${d.typ==="ha" ? `<div class="two"><label class="field">Verspätet: Abzug in Punkten<input type="number" id="l_late" min="0" max="15" value="${esc(d.haLate)}"><span class="hint">3 P = eine Notenstufe</span></label>
       <label class="field">Nicht eingereicht zählt als<input type="number" id="l_miss" min="0" max="15" value="${esc(d.haMissing)}"><span class="hint">0 P = Note 6</span></label></div>` : ""}
-    ${d.typ==="raster" && !isNew ? `<div><button class="btn" data-a="rasterEdit" data-t="${M.id}">Raster dieser Leistung bearbeiten</button></div>` : ""}
+    ${d.typ==="raster" && isNew ? `<label class="field">Raster-Vorlage<select id="l_tpl">${Object.values(db.templates).map(t=>`<option value="${esc(t.id)}" ${d.tpl===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select><span class="hint">Die Vorlage wird kopiert; spätere Änderungen an der Vorlage wirken nicht auf diese Spalte.</span></label>` : ""}
+    ${d.typ==="raster" && !isNew ? `<div class="row"><span class="small muted">${esc((c.leistungen[M.id].raster||{}).name||"")}</span><button class="btn" data-a="rasterEdit" data-t="${M.id}">Raster dieser Leistung bearbeiten</button></div>` : ""}
+    ${d.typ==="note" && d.art==="m" ? `<label class="chkline"><input type="checkbox" id="l_test" ${d.test?"checked":""}> <span>Test (höchstens 20 Minuten)<br><span class="small muted">FA Mathematik: Tests zählen zu den Unterrichtsbeiträgen, nicht zu den Leistungsnachweisen, und dürfen weniger als ein Drittel dieses Bereichs ausmachen.</span></span></label>` : ""}
     ${isNew ? `<label class="chkline"><input type="checkbox" id="l_go" ${M.go!==false?"checked":""}> Danach direkt durchtippen</label>` : ""}
     ${M.err ? `<div class="msg err">${esc(M.err)}</div>` : ""}
   </div>
@@ -554,6 +654,8 @@ function readLeistung(){
   if ($("#l_late")) d.haLate = $("#l_late").value;
   if ($("#l_miss")) d.haMissing = $("#l_miss").value;
   if ($("#l_go")) M.go = $("#l_go").checked;
+  if ($("#l_tpl")) d.tpl = $("#l_tpl").value;
+  d.test = $("#l_test") ? $("#l_test").checked : (d.typ === "note" && d.art === "m" ? d.test : false);
 }
 
 /* ---- Durchtippen: Leistung wählen ---- */
@@ -612,8 +714,8 @@ function mRasterEntry(c, L, g, s){
       <div class="row"><span class="w">${z?"Zu-/Abschlag":Math.round((Number(k.weight)||0)/wTot*100)+" %"}</span><button class="nb ${nb?"on":""}" data-a="rNb" data-c="${esc(k.id)}">nicht beobachtet</button></div></div>
       <div class="levels">${k.levels.map((t,i)=>`<button class="lvl ${i===sb?"on":""}" data-a="rBand" data-c="${esc(k.id)}" data-i="${i}"><span class="st">${z?"Stufe "+(i+1)+" · "+sgn(Number(offs[i])||0)+" P":BAND[i]}</span><span class="tx">${esc(t)}</span></button>`).join("")}</div>
       ${!z && sb >= 0 && sb < 5 ? `<div class="tend">Punkte: ${bandPts(sb).map(p=>`<button class="${p===val?"on":""}" data-a="rPts" data-c="${esc(k.id)}" data-p="${p}">${p}</button>`).join("")}</div>` : ""}</section>`;
-  }).join("") + (R.afbRule ? `<div class="afbbox"><b>Anforderungsbereiche insgesamt</b><span class="small muted">FA / Fachschaft: gut und sehr gut nur mit wesentlichem Anteil AFB III; ausreichend und befriedigend erfordern Leistungen über AFB I hinaus.</span>
-      <div class="levels">${AFB.map(o=>`<button class="lvl ${r.afb===o.v?"on":""}" data-a="rAfb" data-v="${o.v}"><span class="st">höchstens ${o.cap} P</span><span class="tx"><b>${o.t}</b><br>${o.d}</span></button>`).join("")}</div></div>` : "");
+  }).join("") + (R.afbRule ? `<div class="afbbox"><b>Anforderungsbereiche insgesamt</b><span class="small muted">${esc(R.afbHint||AFB_GESCH.hint)}</span>
+      <div class="levels">${afbOpts(R).map(o=>`<button class="lvl ${r.afb===o.v?"on":""}" data-a="rAfb" data-v="${o.v}"><span class="st">${o.cap>=15?"keine Begrenzung":"höchstens "+o.cap+" P"}</span><span class="tx"><b>${esc(o.t)}</b><br>${esc(o.d)}</span></button>`).join("")}</div></div>` : "");
   const res = x.fin != null ? `<div class="bigpts"><b>${x.fin}</b><span class="muted">Punkte</span><span class="n">${NOTEN[x.fin]}</span></div>
       <div class="kv"><span class="muted">Qualitätsschnitt</span><span class="num">${fmt(x.avg)} P</span></div>
       ${crits.some(isZ)?`<div class="kv"><span class="muted">Quantität</span><span class="num">${sgn(x.zus)} P</span></div>`:""}
@@ -655,9 +757,11 @@ function mCode(){
 function mRasterEdit(){
   const d = M.d; M.wide = true;
   const wsum = d.criteria.filter(c=>c.active && !isZ(c)).reduce((s,c)=>s+(Number(c.weight)||0),0);
-  return `${mHead(M.t === "template" ? "Raster-Vorlage bearbeiten" : "Raster dieser Leistung bearbeiten")}
+  return `${mHead(M.t.startsWith("tpl:") ? "Raster-Vorlage bearbeiten" : "Raster dieser Leistung bearbeiten")}
   <div class="mbody">
-    <label class="chkline"><input type="checkbox" id="r_afb" ${d.afbRule?"checked":""}> Anforderungsbereiche abfragen und Punkte begrenzen (AFB I höchstens 4 P, AFB II höchstens 9 P)</label>
+    <label class="field">Name<input type="text" id="r_name" value="${esc(d.name||"")}"></label>
+    <label class="chkline"><input type="checkbox" id="r_afb" ${d.afbRule?"checked":""}> Anforderungsbereiche abfragen und Punkte begrenzen</label>
+    <div class="two" style="grid-template-columns:repeat(3,1fr)">${afbOpts(d).map((o,i)=>`<label class="field">Höchstpunkte ${["AFB I","AFB II","AFB III"][i]}<input type="number" min="0" max="15" id="r_cap${i}" value="${o.cap}"></label>`).join("")}</div>
     <p class="small muted" style="margin:0">Stufentexte: genau sechs Zeilen, Note 1 zuerst. Qualitätskriterien gehen gewichtet in den Schnitt ein (Summe aktiv: ${wsum}); Quantität wirkt als fester Zu- oder Abschlag in Punkten.</p>
     ${d.criteria.map((c,i)=>`<div class="rcrit" data-i="${i}">
       <label>Kriterium<input type="text" data-f="name" value="${esc(c.name)}"></label>
@@ -671,12 +775,13 @@ function mRasterEdit(){
     </div>`).join("")}
     <div><button class="btn" data-a="reAdd">+ Kriterium hinzufügen</button></div>
     ${M.err ? `<div class="msg err">${esc(M.err)}</div>` : ""}
-    ${M.t !== "template" ? `<p class="small muted" style="margin:0">Bereits eingetragene Bewertungen bleiben erhalten; Einträge zu entfernten Kriterien werden gelöscht.</p>` : ""}
+    ${!M.t.startsWith("tpl:") ? `<p class="small muted" style="margin:0">Bereits eingetragene Bewertungen bleiben erhalten; Einträge zu entfernten Kriterien werden gelöscht.</p>` : ""}
   </div>
   <div class="mfoot"><button class="btn" data-a="close">Abbrechen</button><button class="btn primary" data-a="reSave">Übernehmen</button></div>`;
 }
 function readRaster(){
-  const d = M.d; d.afbRule = $("#r_afb").checked;
+  const d = M.d; d.afbRule = $("#r_afb").checked; d.name = $("#r_name").value;
+  d.afbCaps = [0,1,2].map(i => Number($("#r_cap"+i).value));
   document.querySelectorAll(".rcrit").forEach(row => {
     const c = d.criteria[Number(row.dataset.i)]; if (!c) return;
     c.name = row.querySelector('[data-f="name"]').value; c.sub = row.querySelector('[data-f="sub"]').value;
@@ -739,7 +844,7 @@ const A = {
   hj(el){ const c = course(); c.hj = Number(el.dataset.v); save(); render(); },
   filter(el){ ui.filter = el.dataset.v; saveUi(); render(); },
   backup(){ doBackup(); },
-  kursNew(){ openModal({type:"kurs", d:{fach:"Geschichte", gruppe:"", codes:Array.from({length:20},(_,i)=>String(i+1)), wS:50}}); },
+  kursNew(){ openModal({type:"kurs", d:{fach:"Geschichte", gruppe:"", codes:Array.from({length:20},(_,i)=>String(i+1)), wS:40}}); },
   kursEdit(){ const c = course(); openModal({type:"kurs", id:c.id, d:{fach:c.fach, gruppe:c.gruppe, codes:sortCodes(c.codes), wS:c.wS}}); },
   kFill(){ readKurs(); const n = Math.max(1, Math.min(60, Math.round(Number($("#k_n").value)||20))); M.d.codes = Array.from({length:n},(_,i)=>String(i+1)); renderModal(); },
   kSave(){
@@ -759,9 +864,9 @@ const A = {
   kDel(){ if (!M.armed){ M.armed = true; renderModal(); return; } delete db.courses[M.id]; save(); ui.view = "home"; ui.cid = null; saveUi(); closeModal(); },
   lNew(el){
     const c = course(); const typ = el.dataset.typ || "note"; const art = el.dataset.art || "m";
-    openModal({type:"leistung", d:{name:"", date:today(), hj:c.hj||1, art, typ, weight:1, haLate:3, haMissing:0}, go:true});
+    openModal({type:"leistung", d:{name:el.dataset.test?"Test":"", date:today(), hj:c.hj||1, art, typ, weight:1, haLate:3, haMissing:0, tpl:defaultTpl(c), test:!!el.dataset.test}, go:true});
   },
-  lEdit(el){ const L = course().leistungen[el.dataset.id]; openModal({type:"leistung", id:L.id, d:{name:L.name, date:L.date, hj:L.hj, art:L.art, typ:L.typ, weight:L.weight, haLate:L.haLate??3, haMissing:L.haMissing??0}}); },
+  lEdit(el){ const L = course().leistungen[el.dataset.id]; openModal({type:"leistung", id:L.id, d:{name:L.name, date:L.date, hj:L.hj, art:L.art, typ:L.typ, weight:L.weight, haLate:L.haLate??3, haMissing:L.haMissing??0, test:!!L.test}}); },
   lSet(el){ readLeistung(); M.d[el.dataset.f] = el.dataset.v; renderModal(); },
   lSave(){
     readLeistung(); const d = M.d; const w = Number(d.weight);
@@ -773,7 +878,8 @@ const A = {
     else { L = {id:uid("l"), grades:{}, created:Date.now()}; c.leistungen[L.id] = L; }
     Object.assign(L, {name:d.name.trim(), date:d.date||"", hj:d.hj, art:d.art, typ:d.typ, weight:w});
     if (d.typ === "ha"){ L.haLate = Number(d.haLate); L.haMissing = Number(d.haMissing); }
-    if (d.typ === "raster" && !L.raster) L.raster = clone(db.template);
+    if (d.typ === "raster" && !L.raster){ const t = db.templates[d.tpl] || db.templates[defaultTpl(c)]; L.raster = clone(t); }
+    if (d.typ === "note" && d.art === "m" && d.test) L.test = true; else delete L.test;
     if (L.hj !== (c.hj||1)) c.hj = L.hj;
     save();
     const go = !M.id && M.go;
@@ -805,7 +911,7 @@ const A = {
   rAfb(el){ const L = course().leistungen[M.l]; const v = Number(el.dataset.v); gradeSet(L, M.k, g => { g.r = g.r || {}; g.r.afb = g.r.afb === v ? undefined : v; if (g.r.afb === undefined) delete g.r.afb; }); M.keepScroll = true; renderModal(); render(); },
   code(el){ openModal({type:"code", k:el.dataset.k}); },
   codeGo(el){ if (el.dataset.k === "") return; M.k = el.dataset.k; renderModal(); },
-  rasterEdit(el){ const t = el.dataset.t; const src = t === "template" ? db.template : course().leistungen[t].raster; openModal({type:"raster", t, d:clone(src), back: M && M.type === "leistung" ? {type:"leistung", id:M.id, d:M.d} : null}); },
+  rasterEdit(el){ const t = el.dataset.t; const src = t.startsWith("tpl:") ? db.templates[t.slice(4)] : course().leistungen[t].raster; openModal({type:"raster", t, d:clone(src), back: M && M.type === "leistung" ? {type:"leistung", id:M.id, d:M.d} : null}); },
   reAdd(){ readRaster(); M.d.criteria.push({id:uid("c"), name:"Neues Kriterium", sub:"", weight:10, active:true, levels:["Note 1","Note 2","Note 3","Note 4","Note 5","Note 6"]}); renderModal(); },
   reDel(el){ readRaster(); M.d.criteria.splice(Number(el.dataset.i),1); renderModal(); },
   reSave(){
@@ -817,9 +923,10 @@ const A = {
       if (isZ(c) && (c.offsets.length !== 6 || c.offsets.some(o=>!Number.isFinite(o)))) errs.push(`„${c.name}“: genau sechs Zu-/Abschläge, z. B. 2; 1; 0; -1; -2; -3.`);
       if (c.active && !isZ(c) && !(Number(c.weight) > 0)) errs.push(`„${c.name}“: Gewicht muss größer als 0 sein.`);
     });
+    if (d.afbCaps.some(x => !(x >= 0 && x <= 15))) errs.push("Höchstpunkte je AFB zwischen 0 und 15.");
     if (errs.length){ M.err = errs.join(" "); renderModal(); return; }
-    const clean = {afbRule:!!d.afbRule, criteria:d.criteria.map(c => { const o = {id:c.id, name:c.name.trim(), sub:(c.sub||"").trim(), weight:Number(c.weight)||0, active:!!c.active, levels:c.levels.slice()}; if (isZ(c)){ o.kind = "zuschlag"; o.offsets = c.offsets.slice(); } return o; })};
-    if (M.t === "template") db.template = clean;
+    const clean = {id:d.id, name:(d.name||"").trim()||"Raster", builtin:d.builtin, afbRule:!!d.afbRule, afbCaps:d.afbCaps, afbHint:d.afbHint||AFB_GESCH.hint, afbText:d.afbText||AFB_GESCH.text, criteria:d.criteria.map(c => { const o = {id:c.id, name:c.name.trim(), sub:(c.sub||"").trim(), weight:Number(c.weight)||0, active:!!c.active, levels:c.levels.slice()}; if (isZ(c)){ o.kind = "zuschlag"; o.offsets = c.offsets.slice(); } return o; })};
+    if (M.t.startsWith("tpl:")) { if (!clean.builtin) delete clean.builtin; db.templates[M.t.slice(4)] = clean; }
     else {
       const L = course().leistungen[M.t]; L.raster = clean; const ids = new Set(clean.criteria.map(c=>c.id));
       Object.values(L.grades||{}).forEach(g => { if (g.r && g.r.a) Object.keys(g.r.a).forEach(k => { if (!ids.has(k)) delete g.r.a[k]; }); });
@@ -827,7 +934,9 @@ const A = {
     save();
     const back = M.back; if (back){ M = back; renderModal(); render(); } else closeModal();
   },
-  templateReset(el){ if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Wirklich zurücksetzen?"; el.classList.add("danger","armed"); return; } db.template = clone(TEMPLATE); save(); render(); },
+  tplDup(el){ const src = db.templates[el.dataset.id]; const id = uid("t"); const t = clone(src); t.id = id; t.name = src.name + " (Kopie)"; delete t.builtin; db.templates[id] = t; save(); render(); },
+  tplDel(el){ if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Wirklich löschen?"; el.classList.add("armed"); return; } delete db.templates[el.dataset.id]; save(); render(); },
+  tplReset(el){ if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Wirklich zurücksetzen?"; el.classList.add("danger","armed"); return; } db.templates[el.dataset.id] = freshTemplates()[el.dataset.id]; save(); render(); },
   persist: async function(){ try{ if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){} persistInfo(); },
   restorePick(){ $("#restoreFile").click(); },
   export(){ openModal({type:"export"}); },
@@ -855,7 +964,7 @@ document.addEventListener("change", ev => {
         if (!obj || typeof obj.courses !== "object") throw new Error("x");
         const n = Object.keys(obj.courses).length;
         msg.innerHTML = `<div class="msg err" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><span>Backup mit ${n} ${n===1?"Kurs":"Kursen"} gefunden. Einspielen ersetzt alle aktuellen Daten auf diesem Gerät.</span><button class="btn small danger armed" id="restoreGo">Ersetzen</button></div>`;
-        $("#restoreGo").onclick = () => { db = obj; if (!db.template) db.template = clone(TEMPLATE); save(); ui.view = "home"; saveUi(); render(); };
+        $("#restoreGo").onclick = () => { db = migrate(obj); save(); ui.view = "home"; saveUi(); render(); };
       }catch(e){ msg.innerHTML = `<div class="msg err">Die Datei ist kein Notenbuch-Backup.</div>`; }
       t.value = "";
     };
