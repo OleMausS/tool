@@ -54,6 +54,8 @@ header.bar{background:var(--bar);color:var(--bar-ink);padding:calc(env(safe-area
 header.bar nav{display:flex;gap:4px;flex:1}
 header.bar nav button{border:0;background:none;color:var(--bar-muted);font-weight:600;padding:8px 10px;border-radius:6px}
 header.bar nav button.on{color:var(--bar-ink);background:rgba(255,255,255,.1)}
+.savestate{border:0;background:rgba(255,255,255,.1);color:var(--bar-ink);font-size:.8rem;font-weight:600;padding:6px 10px;border-radius:99px;white-space:nowrap}
+.savestate.warn{background:#C98A1B;color:#fff}
 .wrap{max-width:1400px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px));padding-block:16px 60px;display:flex;flex-direction:column;gap:14px}
 
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;min-height:42px;white-space:nowrap}
@@ -193,6 +195,7 @@ textarea{resize:vertical}
     <button type="button" data-a="home" id="navKurse">Kurse</button>
     <button type="button" data-a="settings" id="navSet">Einstellungen</button>
   </nav>
+  <button type="button" class="savestate" id="saveState" data-a="settings"></button>
 </header>
 <main class="wrap" id="app"></main>
 <div id="modalRoot"></div>
@@ -220,7 +223,7 @@ const HA_STAT = {ok:"pünktlich", spaet:"verspätet", fehlt:"nicht eingereicht"}
 const TYP = {note:"Einzelnote", ha:"Hausaufgabe", raster:"Raster"};
 const DEF_OFFSETS = [2,1,0,-1,-2,-3];
 const isZ = c => c.kind === "zuschlag";
-const sgn = n => (n > 0 ? "+" : n < 0 ? "−" : "±") + Math.abs(n);
+const sgn = n => (n > 0 ? "+" : n < 0 ? "−" : "±") + String(Math.round(Math.abs(n)*100)/100).replace(".", ",");
 
 const AFB_GESCH = {
   caps:[4,9,15],
@@ -303,8 +306,8 @@ const TEI = {id:"tei", name:"Teilnahme (Quantität)", sub:"Nur Häufigkeit und K
   "Beteiligt sich selten, meist nur auf Aufforderung",
   "Beteiligt sich sehr selten, nur nach Aufforderung",
   "Beteiligt sich fast nie, auch auf Aufforderung kaum"]};
-const TEMPLATE_MATHE = {
-  id:"mathe", name:"Mathematik · Unterrichtsbeiträge (K1–K6)", builtin:true,
+const TEMPLATE_MATHE6 = {
+  id:"mathe6", name:"Mathematik · K1–K6 einzeln (alt)", builtin:true,
   afbRule: true, afbCaps: AFB_MATHE.caps, afbHint: AFB_MATHE.hint, afbText: AFB_MATHE.text,
   criteria: [
     {id:"k1", name:"K1 Mathematisch argumentieren", sub:"Begründungen entwickeln, Argumentationen nachvollziehen, hinterfragen, bewerten", weight:15, active:true, levels:[
@@ -366,12 +369,102 @@ const TEMPLATE_MATHE = {
       "Nicht erbracht oder ohne fachlichen Gehalt"]}
   ]
 };
-function freshTemplates(){ return {geschichte: clone(TEMPLATE), mathe: clone(TEMPLATE_MATHE)}; }
+
+/* Zusammenlegung: welche alten Kompetenzen in welchen neuen Bereich gehen */
+const MATHE_MERGE = [
+  {id:"ak", from:["k1","k6"]},
+  {id:"pm", from:["k2","k3"]},
+  {id:"dv", from:["k4","k5"]}
+];
+/* Unterrichtsbeteiligung, ausdifferenziert: zwei Quantitätskriterien, je halber Zu-/Abschlag.
+   Beide auf Stufe 1 ergeben zusammen +2 P, beide auf Stufe 6 zusammen −3 P, wie die bisherige „Teilnahme“. */
+const TEI_SPLIT = [
+  {id:"tei_g", name:"Beteiligung am Unterrichtsgespräch (Quantität)", sub:"Wie oft und wie selbstständig, nicht wie richtig", kind:"zuschlag", offsets:[1,0.5,0,-0.5,-1,-1.5], weight:0, active:true, levels:[
+    "Meldet sich in jeder Stunde mehrfach und unaufgefordert, auch bei neuen und schwierigen Inhalten",
+    "Meldet sich regelmäßig von sich aus, in allen Phasen des Gesprächs",
+    "Meldet sich regelmäßig, vor allem bei vertrauten oder reproduktiven Inhalten",
+    "Meldet sich selten; äußert sich meist erst auf Aufforderung",
+    "Äußert sich nur auf Aufforderung",
+    "Äußert sich auch auf Aufforderung kaum"]},
+  {id:"tei_a", name:"Aktivität in Arbeitsphasen (Quantität)", sub:"Einzel-, Partner-, Gruppenarbeit: Arbeitsumfang und Ausdauer, nicht Richtigkeit", kind:"zuschlag", offsets:[1,0.5,0,-0.5,-1,-1.5], weight:0, active:true, levels:[
+    "Beginnt sofort, arbeitet durchgehend und zügig; bearbeitet auch Zusatz- und Vertiefungsaufgaben",
+    "Arbeitet durchgehend und selbstständig an den Aufgaben",
+    "Arbeitet überwiegend kontinuierlich; braucht gelegentlich einen Anstoß",
+    "Arbeitet nur phasenweise; braucht häufig Anstöße",
+    "Arbeitet nur nach wiederholter Aufforderung",
+    "Arbeitet fast nie an den Aufgaben"]}
+];
+const TEMPLATE_MATHE = {
+  id:"mathe", name:"Mathematik · Unterrichtsbeiträge (3 Bereiche)", builtin:true,
+  afbRule: true, afbCaps: AFB_MATHE.caps, afbHint: AFB_MATHE.hint, afbText: AFB_MATHE.text,
+  criteria: [
+    {id:"ak", name:"Argumentieren und Kommunizieren (K1, K6)", sub:"Begründungen entwickeln und prüfen, Überlegungen in Fachsprache darlegen, auf andere eingehen", weight:30, active:true, levels:[
+      "Entwickelt auch komplexe Begründungen eigenständig; bewertet Argumentationen und Äußerungen anderer fachlich; präsentiert präzise in Fachsprache",
+      "Begründet mehrschrittig und schlüssig; stellt Lösungswege verständlich und adressatengerecht dar; geht auf andere ein und nutzt Fehler konstruktiv",
+      "Erläutert überschaubare Argumentationen; stellt Überlegungen und Ergebnisse meist verständlich dar; Fachsprache überwiegend angemessen",
+      "Gibt Routinebegründungen wieder; drückt einfache Sachverhalte aus; Fachsprache lückenhaft",
+      "Begründungen kaum tragfähig; Äußerungen schwer nachvollziehbar; Fachsprache fehlt weitgehend",
+      "Keine Begründungen und keine verwertbaren fachlichen Äußerungen"]},
+    {id:"pm", name:"Probleme lösen und Modellieren (K2, K3)", sub:"Strategien wählen, Sachsituationen mathematisieren, Ergebnisse prüfen und deuten", weight:25, active:true, levels:[
+      "Löst anspruchsvolle, unvertraute Probleme und modelliert komplexe Situationen; reflektiert Lösungswege und Modelle kritisch",
+      "Wählt selbstständig geeignete Strategien und Modelle, kombiniert Verfahren; interpretiert Ergebnisse und prüft sie an der Ausgangssituation",
+      "Löst Probleme und überschaubare Modellierungen mit bekannten Verfahren; deutet Ergebnisse meist zutreffend",
+      "Löst Routineaufgaben und nutzt vertraute Modelle; bei Unvertrautem nur mit Hilfe",
+      "Löst Routineaufgaben lückenhaft; Übergang zwischen Sachsituation und Mathematik nur mit Hilfe",
+      "Kein Lösungs- oder Modellierungsansatz erkennbar"]},
+    {id:"dv", name:"Darstellen und Verfahren (K4, K5)", sub:"Darstellungen nutzen und wechseln, mit Termen und Gleichungen arbeiten, Werkzeuge einsetzen", weight:25, active:true, levels:[
+      "Führt Verfahren sicher und effizient aus; entwickelt eigene Darstellungen und beurteilt sie; reflektiert Möglichkeiten und Grenzen digitaler Werkzeuge",
+      "Rechnet und formt sicher um; wechselt sicher zwischen Darstellungsformen; setzt Werkzeuge sachgerecht ein",
+      "Führt Routineverfahren überwiegend korrekt aus; nutzt und fertigt vertraute Darstellungen korrekt an",
+      "Routineverfahren und Darstellungen mit häufigen Fehlern; Darstellungswechsel und Werkzeuge nur mit Anleitung",
+      "Verfahren meist fehlerhaft; Darstellungen nur bruchstückhaft genutzt",
+      "Führt keine Verfahren aus und nutzt keine Darstellungen"]},
+    ...TEI_SPLIT.map(c => JSON.parse(JSON.stringify(c))),
+    ...TEMPLATE_MATHE6.criteria.filter(c => ["koop","praes"].includes(c.id)).map(c => JSON.parse(JSON.stringify(c)))
+  ]
+};
+function isMathe6(R){ return !!R && R.criteria.some(c => c.id === "k1") && R.criteria.some(c => c.id === "k6"); }
+/* Alte Rasterbewertung (K1–K6) auf 3 Bereiche umrechnen. Bei zwei Werten: gewichteter Mittelwert mit den alten Gewichten,
+   damit der Qualitätsschnitt gleich bleibt. Ein Wert fehlt oder ist „nicht beobachtet“: der andere zählt. */
+function mergeVals(x, y, wx, wy){
+  const has = v => v !== undefined && v !== null;
+  if (!has(x) && !has(y)) return undefined;
+  if (!has(x)) return y; if (!has(y)) return x;
+  if (x < 0 && y < 0) return -1;
+  if (x < 0) return y; if (y < 0) return x;
+  return Math.round((wx*x + wy*y) / (wx+wy) * 100) / 100;
+}
+function convertRaster3(L, tpl){
+  const old = L.raster; const W = {}; old.criteria.forEach(c => W[c.id] = Number(c.weight)||0);
+  const R = clone(tpl);
+  R.afbRule = old.afbRule; R.afbCaps = old.afbCaps; R.afbHint = old.afbHint; R.afbText = old.afbText;
+  ["koop","praes"].forEach(id => { const o = old.criteria.find(c => c.id === id), n = R.criteria.find(c => c.id === id); if (o && n) Object.assign(n, clone(o)); });
+  const changes = [];
+  Object.entries(L.grades||{}).forEach(([code, g]) => {
+    if (!g.r || !g.r.a) return;
+    const before = computeRaster(old, g.r);
+    const a = {};
+    Object.entries(g.r.a).forEach(([k,v]) => { if (!/^k[1-6]$/.test(k) && k !== "tei") a[k] = v; });
+    /* alte Teilnahme auf beide neuen Beteiligungskriterien: Summe der Zuschläge bleibt gleich */
+    if (g.r.a.tei !== undefined && g.r.a.tei !== null){ a.tei_g = g.r.a.tei; a.tei_a = g.r.a.tei; }
+    MATHE_MERGE.forEach(m => { const [p,q] = m.from; const v = mergeVals(g.r.a[p], g.r.a[q], W[p]||1, W[q]||1); if (v !== undefined) a[m.id] = v; });
+    const nr = Object.assign({}, g.r, {a, alt:g.r.a});
+    const after = computeRaster(R, nr);
+    if (before.fin !== after.fin || before.status !== after.status) changes.push({code, vorher: before.fin ?? "–", nachher: after.fin ?? "–"});
+    g.r = nr;
+  });
+  L.rasterAlt = old; L.raster = R;
+  return changes;
+}
+function freshTemplates(){ return {geschichte: clone(TEMPLATE), mathe: clone(TEMPLATE_MATHE), mathe6: clone(TEMPLATE_MATHE6)}; }
 function afbOpts(R){ const t = R.afbText || AFB_GESCH.text, c = R.afbCaps || AFB_GESCH.caps; return [0,1,2].map(i => ({v:i+1, t:t[i].t, d:t[i].d, cap:Number(c[i])})); }
 function migrate(d){
   if (!d.templates){ d.templates = {}; if (d.template){ const g = Object.assign(clone(TEMPLATE), d.template, {id:"geschichte", name:TEMPLATE.name, builtin:true}); if (!g.afbCaps){ g.afbCaps = AFB_GESCH.caps; g.afbHint = AFB_GESCH.hint; g.afbText = AFB_GESCH.text; } d.templates.geschichte = g; } }
   delete d.template;
-  const f = freshTemplates(); if (!d.templates.geschichte) d.templates.geschichte = f.geschichte; if (!d.templates.mathe) d.templates.mathe = f.mathe;
+  const f = freshTemplates(); if (!d.templates.geschichte) d.templates.geschichte = f.geschichte;
+  if (d.templates.mathe && isMathe6(d.templates.mathe)){ if (!d.templates.mathe6){ d.templates.mathe6 = Object.assign(d.templates.mathe, {id:"mathe6", name:TEMPLATE_MATHE6.name}); } d.templates.mathe = f.mathe; }
+  if (!d.templates.mathe) d.templates.mathe = f.mathe;
+  if (!d.templates.mathe6) d.templates.mathe6 = f.mathe6;
   Object.values(d.courses||{}).forEach(c => Object.values(c.leistungen||{}).forEach(L => { if (L.raster && !L.raster.afbCaps){ L.raster.afbCaps = AFB_GESCH.caps; L.raster.afbHint = AFB_GESCH.hint; L.raster.afbText = AFB_GESCH.text; } }));
   return d;
 }
@@ -395,7 +488,10 @@ function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return tru
 let db = migrate(lsGet(LS) || {version:1, courses:{}, lastBackup:null, created:Date.now()});
 const ui = Object.assign({view:"home", cid:null, filter:"alle"}, lsGet(UIKEY) || {});
 let saveOk = true;
-function save(){ saveOk = lsSet(LS, db); }
+function save(markChange=true){ if (markChange) db.lastChange = Date.now(); saveOk = lsSet(LS, db); saveState(); }
+function unsaved(){ return !!db.lastChange && Object.keys(db.courses).length > 0 && db.lastChange > (db.lastBackup||0); }
+function saveState(){ const el = document.getElementById("saveState"); if (!el) return; const u = unsaved(); el.className = "savestate" + (u ? " warn" : ""); el.textContent = u ? "● nicht exportiert" : (db.lastBackup ? "✓ exportiert" : ""); el.hidden = !u && !db.lastBackup; }
+window.addEventListener("beforeunload", e => { if (unsaved()){ e.preventDefault(); e.returnValue = ""; } });
 function saveUi(){ lsSet(UIKEY, {view:ui.view, cid:ui.cid, filter:ui.filter}); }
 function course(){ return db.courses[ui.cid] || null; }
 function sortCodes(arr){ return arr.slice().sort((a,b) => { const x = Number(a), y = Number(b); return (isNaN(x)||isNaN(y)) ? String(a).localeCompare(String(b),"de") : x - y; }); }
@@ -559,6 +655,12 @@ function renderSettings(app){
     <div class="small">Letztes Backup: <b>${db.lastBackup ? new Date(db.lastBackup).toLocaleString("de-DE",{dateStyle:"medium",timeStyle:"short"}) : "noch keins"}</b> · ${cs} ${cs===1?"Kurs":"Kurse"}</div>
     <div class="row"><button class="btn primary" data-a="backup">Backup herunterladen</button><button class="btn" data-a="restorePick">Backup einspielen …</button><input type="file" id="restoreFile" accept=".json,application/json" hidden></div>
     <div id="restoreMsg"></div>
+    <details><summary class="small" style="cursor:pointer;font-weight:600">Backup als Text (falls Herunterladen nicht klappt, z. B. in der Koder-Vorschau)</summary>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        <div class="row"><button class="btn" data-a="copyBackup">Backup als Text kopieren</button><span class="small muted" id="copyBkMsg"></span></div>
+        <textarea id="pasteBackup" rows="4" class="num" style="font-size:.75rem" placeholder="Backup-Text hier einfügen …"></textarea>
+        <div class="row"><button class="btn" data-a="pasteRestore">Eingefügten Text einspielen</button></div>
+      </div></details>
   </div>
   <div class="panel" style="display:flex;flex-direction:column;gap:12px">
     <h2>Raster-Vorlagen</h2>
@@ -640,6 +742,10 @@ function mLeistung(){
     ${d.typ==="ha" ? `<div class="two"><label class="field">Verspätet: Abzug in Punkten<input type="number" id="l_late" min="0" max="15" value="${esc(d.haLate)}"><span class="hint">3 P = eine Notenstufe</span></label>
       <label class="field">Nicht eingereicht zählt als<input type="number" id="l_miss" min="0" max="15" value="${esc(d.haMissing)}"><span class="hint">0 P = Note 6</span></label></div>` : ""}
     ${d.typ==="raster" && isNew ? `<label class="field">Raster-Vorlage<select id="l_tpl">${Object.values(db.templates).map(t=>`<option value="${esc(t.id)}" ${d.tpl===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select><span class="hint">Die Vorlage wird kopiert; spätere Änderungen an der Vorlage wirken nicht auf diese Spalte.</span></label>` : ""}
+    ${d.typ==="raster" && !isNew && isMathe6(c.leistungen[M.id].raster) ? `<div class="banner" style="flex-direction:column;align-items:stretch"><span>Diese Spalte nutzt noch das alte Mathe-Raster mit K1–K6 einzeln.</span>
+      <span class="small muted">Umstellen legt je zwei Kompetenzen zusammen: K1+K6, K2+K3, K4+K5. Vorhandene Bewertungen werden mit den alten Gewichten gemittelt, damit die Punkte gleich bleiben. Die alten Einzelwerte bleiben in der Datei gespeichert.</span>
+      <div class="row"><button class="btn ${M.convArmed?"primary":""}" data-a="lConvert">${M.convArmed?"Jetzt umstellen":"Auf 3 Bereiche umstellen …"}</button></div></div>` : ""}
+    ${M.convMsg ? `<div class="msg ${M.convMsg.t}">${M.convMsg.m}</div>` : ""}
     ${d.typ==="raster" && !isNew ? `<div class="row"><span class="small muted">${esc((c.leistungen[M.id].raster||{}).name||"")}</span><button class="btn" data-a="rasterEdit" data-t="${M.id}">Raster dieser Leistung bearbeiten</button></div>` : ""}
     ${d.typ==="note" && d.art==="m" ? `<label class="chkline"><input type="checkbox" id="l_test" ${d.test?"checked":""}> <span>Test (höchstens 20 Minuten)<br><span class="small muted">FA Mathematik: Tests zählen zu den Unterrichtsbeiträgen, nicht zu den Leistungsnachweisen, und dürfen weniger als ein Drittel dieses Bereichs ausmachen.</span></span></label>` : ""}
     ${isNew ? `<label class="chkline"><input type="checkbox" id="l_go" ${M.go!==false?"checked":""}> Danach direkt durchtippen</label>` : ""}
@@ -713,7 +819,7 @@ function mRasterEntry(c, L, g, s){
     return `<section class="crit ${nb?"off":""}"><div class="crithead"><div><b>${esc(k.name)}</b><span class="sub">${esc(k.sub||"")}</span></div>
       <div class="row"><span class="w">${z?"Zu-/Abschlag":Math.round((Number(k.weight)||0)/wTot*100)+" %"}</span><button class="nb ${nb?"on":""}" data-a="rNb" data-c="${esc(k.id)}">nicht beobachtet</button></div></div>
       <div class="levels">${k.levels.map((t,i)=>`<button class="lvl ${i===sb?"on":""}" data-a="rBand" data-c="${esc(k.id)}" data-i="${i}"><span class="st">${z?"Stufe "+(i+1)+" · "+sgn(Number(offs[i])||0)+" P":BAND[i]}</span><span class="tx">${esc(t)}</span></button>`).join("")}</div>
-      ${!z && sb >= 0 && sb < 5 ? `<div class="tend">Punkte: ${bandPts(sb).map(p=>`<button class="${p===val?"on":""}" data-a="rPts" data-c="${esc(k.id)}" data-p="${p}">${p}</button>`).join("")}</div>` : ""}</section>`;
+      ${!z && sb >= 0 && sb < 5 ? `<div class="tend">Punkte: ${bandPts(sb).map(p=>`<button class="${p===val?"on":""}" data-a="rPts" data-c="${esc(k.id)}" data-p="${p}">${p}</button>`).join("")}${val % 1 ? `<span>umgerechnet: <b>${fmt(val,2)}</b> P</span>` : ""}</div>` : ""}</section>`;
   }).join("") + (R.afbRule ? `<div class="afbbox"><b>Anforderungsbereiche insgesamt</b><span class="small muted">${esc(R.afbHint||AFB_GESCH.hint)}</span>
       <div class="levels">${afbOpts(R).map(o=>`<button class="lvl ${r.afb===o.v?"on":""}" data-a="rAfb" data-v="${o.v}"><span class="st">${o.cap>=15?"keine Begrenzung":"höchstens "+o.cap+" P"}</span><span class="tx"><b>${esc(o.t)}</b><br>${esc(o.d)}</span></button>`).join("")}</div></div>` : "");
   const res = x.fin != null ? `<div class="bigpts"><b>${x.fin}</b><span class="muted">Punkte</span><span class="n">${NOTEN[x.fin]}</span></div>
@@ -770,7 +876,7 @@ function mRasterEdit(){
       <button class="btn danger small" data-a="reDel" data-i="${i}">Entfernen</button>
       <label class="full">Untertitel<input type="text" data-f="sub" value="${esc(c.sub||"")}"></label>
       <label>Wirkung<select data-f="kind"><option value="q" ${isZ(c)?"":"selected"}>Qualität (gewichtet)</option><option value="zuschlag" ${isZ(c)?"selected":""}>Quantität (Zu-/Abschlag)</option></select></label>
-      <label style="grid-column:span 3">Zu-/Abschläge Stufe 1–6 (nur Quantität)<input type="text" data-f="offsets" value="${esc((c.offsets||DEF_OFFSETS).join("; "))}"></label>
+      <label style="grid-column:span 3">Zu-/Abschläge Stufe 1–6 (nur Quantität)<input type="text" data-f="offsets" value="${esc((c.offsets||DEF_OFFSETS).map(o=>String(o).replace(".",",")).join("; "))}"></label>
       <label class="full">Stufen Note 1 bis Note 6<textarea rows="6" data-f="levels">${esc(c.levels.join("\n"))}</textarea></label>
     </div>`).join("")}
     <div><button class="btn" data-a="reAdd">+ Kriterium hinzufügen</button></div>
@@ -787,7 +893,7 @@ function readRaster(){
     c.name = row.querySelector('[data-f="name"]').value; c.sub = row.querySelector('[data-f="sub"]').value;
     c.weight = row.querySelector('[data-f="weight"]').value; c.active = row.querySelector('[data-f="active"]').checked;
     c.kind = row.querySelector('[data-f="kind"]').value === "zuschlag" ? "zuschlag" : undefined;
-    c.offsets = row.querySelector('[data-f="offsets"]').value.split(/[;\s]+/).filter(Boolean).map(x => Number(x.replace("−","-").replace("+","")));
+    c.offsets = row.querySelector('[data-f="offsets"]').value.split(/[;\s]+/).filter(Boolean).map(x => Number(x.replace("−","-").replace("+","").replace(",",".")));
     c.levels = row.querySelector('[data-f="levels"]').value.split("\n").map(s=>s.trim()).filter(Boolean);
   });
 }
@@ -831,9 +937,10 @@ function download(name, text, type){
   const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click();
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 4000);
 }
+function backupText(){ return JSON.stringify(db); }
 function doBackup(){
-  db.lastBackup = Date.now(); save();
-  download(`Notenbuch_Backup_${today()}.json`, JSON.stringify(db), "application/json");
+  db.lastBackup = Date.now(); save(false);
+  download(`Notenbuch_Backup_${today()}.json`, backupText(), "application/json");
   render();
 }
 
@@ -885,6 +992,13 @@ const A = {
     const go = !M.id && M.go;
     M = null; $("#modalRoot").innerHTML = "";
     if (go) startSeq(L.id); else render();
+  },
+  lConvert(){
+    if (!M.convArmed){ M.convArmed = true; renderModal(); return; }
+    readLeistung(); const L = course().leistungen[M.id]; const tpl = db.templates.mathe && !isMathe6(db.templates.mathe) ? db.templates.mathe : TEMPLATE_MATHE;
+    const ch = convertRaster3(L, tpl); save(); M.convArmed = false;
+    M.convMsg = ch.length ? {t:"err", m:`Umgestellt. Bei ${ch.length} ${ch.length===1?"Code":"Codes"} ändert sich das Ergebnis: ` + ch.map(x => `Code ${esc(x.code)}: ${x.vorher} → ${x.nachher}`).join(", ") + ". Grund: Dort war eine der beiden Kompetenzen „nicht beobachtet“ oder offen."} : {t:"ok", m:"Umgestellt. Alle Ergebnisse bleiben gleich."};
+    renderModal(); render();
   },
   lDel(){ if (!M.armed){ M.armed = true; renderModal(); return; } delete course().leistungen[M.id]; save(); closeModal(); },
   durchPick(){ openModal({type:"durch"}); },
@@ -939,6 +1053,10 @@ const A = {
   tplReset(el){ if (el.dataset.armed !== "1"){ el.dataset.armed = "1"; el.textContent = "Wirklich zurücksetzen?"; el.classList.add("danger","armed"); return; } db.templates[el.dataset.id] = freshTemplates()[el.dataset.id]; save(); render(); },
   persist: async function(){ try{ if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){} persistInfo(); },
   restorePick(){ $("#restoreFile").click(); },
+  copyBackup: async function(){ const t = backupText(); const m = $("#copyBkMsg");
+    try{ await navigator.clipboard.writeText(t); db.lastBackup = Date.now(); save(false); m.textContent = "Kopiert. Jetzt in eine Datei einfügen und speichern."; }
+    catch(e){ const ta = $("#pasteBackup"); ta.value = t; ta.focus(); ta.select(); m.textContent = "Text markiert: über das Menü kopieren, danach gilt er als exportiert."; db.lastBackup = Date.now(); save(false); } },
+  pasteRestore(){ const f = new File([$("#pasteBackup").value], "backup.json"); const dt = new DataTransfer(); dt.items.add(f); const inp = $("#restoreFile"); inp.files = dt.files; inp.dispatchEvent(new Event("change", {bubbles:true})); },
   export(){ openModal({type:"export"}); },
   csvCopy: async function(){ const t = $("#csvTa"); try{ await navigator.clipboard.writeText(t.value); $("#copyMsg").textContent = "Kopiert."; }catch(e){ t.focus(); t.select(); $("#copyMsg").textContent = "Markiert. Kopieren über das Menü."; } },
   csvDl(){ const c = course(); download(fileName(`${c.fach}_${c.gruppe}_HJ${c.hj||1}`) + ".csv", "﻿" + csvOf(c, c.hj||1), "text/csv;charset=utf-8"); },
@@ -964,7 +1082,7 @@ document.addEventListener("change", ev => {
         if (!obj || typeof obj.courses !== "object") throw new Error("x");
         const n = Object.keys(obj.courses).length;
         msg.innerHTML = `<div class="msg err" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between"><span>Backup mit ${n} ${n===1?"Kurs":"Kursen"} gefunden. Einspielen ersetzt alle aktuellen Daten auf diesem Gerät.</span><button class="btn small danger armed" id="restoreGo">Ersetzen</button></div>`;
-        $("#restoreGo").onclick = () => { db = migrate(obj); save(); ui.view = "home"; saveUi(); render(); };
+        $("#restoreGo").onclick = () => { db = migrate(obj); db.lastBackup = Date.now(); save(false); ui.view = "home"; saveUi(); render(); };
       }catch(e){ msg.innerHTML = `<div class="msg err">Die Datei ist kein Notenbuch-Backup.</div>`; }
       t.value = "";
     };
@@ -984,7 +1102,7 @@ document.addEventListener("keydown", ev => {
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
   navigator.serviceWorker.register("sw.js").catch(()=>{});
 }
-save(); render();
+save(false); saveState(); render();
 })();
 </script>
 </body>

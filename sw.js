@@ -1,5 +1,5 @@
 /* Notenbuch: hält die App-Dateien offline vor. Noten liegen NICHT hier, sondern im lokalen Speicher. */
-const CACHE = "notenbuch-v2";
+const CACHE = "notenbuch-v4";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon-180.png", "./icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
